@@ -73,29 +73,25 @@ function setSliderValue(id, value){
 // MOVEMENT INTERACTION
 const accel = new Accelerometer({'frequency':60});
 const gyro = new Gyroscope({'frequency':60});
-const lp1 = new LowPassFilter(1.5);
 
-let timeAccel = audioContext.currentTime;
 let pitch_accel = 0;
 let pitch_gyro = 0;
 let pitch = 0;
-let pitch_a = 0.6;
+let pitch_a = 0.95;
 let tilt_accel = 0;
 let tilt_gyro = 0;
 let tilt = 0;
 let tilt_a = 0.8;
 
 accel.addEventListener('reading', () => {
-  const currentTime = audioContext.currentTime;
-  const dt = currentTime - timeAccel;
-  timeAccel = currentTime;
   const ax = accel.x / 9.81;
   const ay = accel.y / 9.81;
   const az = accel.z / 9.81;
-  setSliderValue(1, (Math.PI / 2 - Math.asin(ax)));
-  setSliderValue(2, (Math.asin(az)));
-  pitch_accel = (Math.PI / 2 - Math.asin(ax)) || pitch_accel;
+
+  pitch_a = 0.8 + 0.2 * pitch / 1.57;
+  pitch_accel = Math.asin(az) || pitch_accel;
   pitch = pitch_a * pitch_gyro + (1 - pitch_a) * pitch_accel;
+
   tilt_accel = Math.atan2(ay, Math.sqrt(az**2 + ax**2));
   tilt = tilt_a * tilt_gyro + (1 - tilt_a) * tilt_accel;
   rotateLogo(-tilt);
@@ -105,14 +101,19 @@ let timeGyro = audioContext.currentTime;
 gyro.addEventListener('reading', () => {
   const currentTime = audioContext.currentTime;
   const dt = currentTime - timeGyro;
+  timeGyro = currentTime;
+
   const gy = gyro.y;
   const gz = gyro.z;
-  timeGyro = currentTime;
+
   pitch_gyro = pitch + gy * dt;
   pitch = pitch_a * pitch_gyro + (1 - pitch_a) * pitch_accel;
+  setSliderValue(1, pitch_gyro);
+
   tilt_gyro = tilt - gz * dt;
   tilt = tilt_a * tilt_gyro + (1 - tilt_a) * tilt_accel;
   rotateLogo(-tilt);
+  
 })
 
 // const panInput = quaternions[0] - quaternions[2];
@@ -124,6 +125,7 @@ gyro.addEventListener('reading', () => {
 
 // VIBRATIONS
 const navigator = window.navigator;
+navigator.vibrate(1000);
 
 
 funnyFullScreen.enable();
@@ -133,8 +135,6 @@ gyro.start();
 render(html`
 
   <sc-slider id="slider1" value=0 min=0 max=1.57
-  ></sc-slider>
-  <sc-slider id="slider2" value=0 min=0 max=1.57
   ></sc-slider>
 
   <img id="logo" src="assets/logo.png" style="width:200px; rotate:0deg"/>

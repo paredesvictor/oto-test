@@ -89,8 +89,6 @@ gyro.addEventListener('reading', () => {
   const value = gyro.z;
   time_gyro = currentTime;
   rotation += value * dt;
-  document.getElementById('slider1').value = value;
-  document.getElementById('slider2').value = rotation;
   document.getElementById('logo').style.setProperty('transform', `rotate(${rotation}rad)`);
 })
 
@@ -122,12 +120,12 @@ render(html`
     }}
     ></sc-toggle>
 
-    <sc-slider id="slider1" value=0 min=-1 max=1
+    <!-- <sc-slider id="slider1" value=0 min=-1 max=1
     ></sc-slider>
     <sc-slider id="slider2" value=0 min=${-Math.PI / 2} max=${Math.PI / 2}
     ></sc-slider>
     <sc-slider id="slider3" value=0 min=${-2 * Math.PI} max=${2 * Math.PI}
-    ></sc-slider>
+    ></sc-slider> -->
     <!-- <sc-slider id="slider4" value=0 min=-1 max=1
     ></sc-slider>
     <sc-slider id="slider5" value=0 min=-1 max=1

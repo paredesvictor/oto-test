@@ -103,11 +103,6 @@ gyro.addEventListener('reading', () => {
 const navigator = window.navigator;
 funnyFullScreen.enable();
 render(html`
-  <sc-number id="cutoff" value=${lp1.cutoffFrequency}
-  @input=${e => {
-    lp1.cutoffFrequency = e.detail.value;
-  }}
-  ></sc-number>
   <sc-toggle
   @change=${e => {
     if (e.detail.value) {

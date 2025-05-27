@@ -116,7 +116,6 @@ export class AudioGraph {
         this._masterPan.pan.value = value;
         const lateralTolerance = 1 - this._carSpeed**0.75 / 180**0.75;
         this.setDisto(Math.max(Math.abs(value) - lateralTolerance, 0));
-        return lateralTolerance;
     }
 
     setDisto(amount) {

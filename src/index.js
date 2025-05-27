@@ -44,7 +44,7 @@ accel.addEventListener("reading", () => {
   if (updateCounter == 2) {
     rotateLogo(-tilt);
     updateSpeed(pitch);
-    display(audioGraph.updatePan(tilt));
+    audioGraph.updatePan(tilt);
     updateCounter = 0;
   }
 });
@@ -72,7 +72,7 @@ gyro.addEventListener("reading", () => {
   if (updateCounter == 2) {
     rotateLogo(-tilt);
     updateSpeed(pitch);
-    display(audioGraph.updatePan(tilt));
+    audioGraph.updatePan(tilt);
     updateCounter = 0;
   }
 });

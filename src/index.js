@@ -2,25 +2,14 @@ import { html, render } from "lit";
 import "@ircam/sc-components";
 
 import resumeAudioContext from "../lib/resume-audio-context.js";
-import loadAudioBuffer from "../lib/load-audio-buffer.js";
 import funnyFullScreen from "../lib/funny-full-screen.js";
-import { scale, LowPassFilter } from "./utilities.js";
-
-
+import { AudioGraph } from "./audioState.js";
 
 // ------- AUDIO GRAPH
 const audioContext = new AudioContext();
 await resumeAudioContext(audioContext);
-
-
-function frequencyControl(value, low = 0, high = 1) {
-  const scaledValue = scale(value, low, high, 0, 0.8);
-  if (scaledValue < 0.05) {
-    filter.frequency.value = (200 * scaledValue) / 0.05;
-  } else {
-    filter.frequency.value = 200 * Math.pow(10, 2 * scaledValue);
-  }
-}
+const audioGraph = new AudioGraph(audioContext);
+audioGraph.initializeGraph();
 
 // ------- ORIENTATION
 const accel = new Accelerometer({ frequency: 60 });
@@ -55,6 +44,7 @@ accel.addEventListener("reading", () => {
   if (updateCounter == 2) {
     rotateLogo(-tilt);
     updateSpeed(pitch);
+    display(audioGraph.updatePan(tilt));
     updateCounter = 0;
   }
 });
@@ -82,12 +72,14 @@ gyro.addEventListener("reading", () => {
   if (updateCounter == 2) {
     rotateLogo(-tilt);
     updateSpeed(pitch);
+    display(audioGraph.updatePan(tilt));
     updateCounter = 0;
   }
 });
 
 // -------- SPEED
-const pedalCenter = 45; // deg
+const pedalCenter = 40; // deg
+const pedalDeadzone = 7; //deg
 const pedalMaxDiff = 30; // deg
 const pedalMinDiff = 10; // deg
 const maxSpeed = 180; // km/h
@@ -95,6 +87,7 @@ const upResponseTime = (5 * 0.66 * maxSpeed) / 100; // 0 - 100 km/h time
 const downResponseTime = (3 * maxSpeed) / 100; // 100 - 0 km/h time
 let speed = 0;
 let acceleration = 0;
+let brakeRate = 0;
 let timeSpeed = audioContext.currentTime;
 
 function updateSpeed(pedalAngle) {
@@ -103,18 +96,31 @@ function updateSpeed(pedalAngle) {
   timeSpeed = currentTime;
 
   const pedalAngleDeg = (pedalAngle * 180) / Math.PI;
-  if (pedalAngleDeg > pedalCenter) {
+  if (pedalAngleDeg > pedalCenter + pedalDeadzone / 2) {
     // positive acceleration
-    acceleration = Math.min((pedalAngleDeg - pedalCenter) / pedalMaxDiff, 1);
+    acceleration =
+      (pedalAngleDeg - pedalCenter - pedalDeadzone / 2) / pedalMaxDiff;
+    acceleration = Math.min(acceleration, 1);
     speed += (acceleration * dt * (maxSpeed - speed)) / upResponseTime;
-  } else {
+    speed = Math.min(speed, 180);
+    brakeRate = 0;
+  } else if (pedalAngleDeg < pedalCenter - pedalDeadzone / 2) {
     // negative acceleration
-    acceleration = Math.max((pedalAngleDeg - pedalCenter) / pedalMinDiff, -1);
-    speed = speed + (maxSpeed * acceleration * dt) / downResponseTime;
+    acceleration =
+      (pedalAngleDeg - pedalCenter + pedalDeadzone / 2) / pedalMinDiff;
+    acceleration = Math.max(acceleration, -1);
+    const newSpeed = Math.max(
+      speed + (maxSpeed * acceleration * dt) / downResponseTime,
+      0
+    );
+    brakeRate = (newSpeed - speed) / dt;
+    speed = newSpeed;
+  } else {
+    acceleration = 0;
+    brakeRate = 0;
   }
-
-  speed = Math.max(Math.min(speed, 180), 0);
   setSpeed(speed);
+  audioGraph.updateSpeed(speed, brakeRate);
 }
 
 // ------- USER INTERFACE
@@ -123,6 +129,11 @@ funnyFullScreen.enable(); // user can toggle fullscreen with two fingers
 
 accel.start();
 gyro.start();
+
+// setInterval(() => {
+//   const angle = document.getElementById('angle').value;
+//   updateSpeed(angle);
+// }, 1000/60)
 
 render(
   html`
@@ -141,6 +152,14 @@ render(
 
       <div class="central-elements">
         <img id="limite" src="assets/limite.svg" />
+        <!-- <sc-slider 
+          id='angle'
+          orientation="vertical"
+          style="height:300px; width:50px"
+          min=0
+          max=${Math.PI / 2}
+          value=${0}
+        ></sc-slider> -->
       </div>
     </div>
   `,

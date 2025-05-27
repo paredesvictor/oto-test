@@ -23,3 +23,10 @@ export class LowPassFilter {
 export function scale(value, in_low, in_high, out_low, out_high) {
     return (value - in_low) * (out_high - out_low) / (in_high - in_low) + out_low;
 }
+
+export function scaleClip(value, in_low, in_high, out_low, out_high) {
+    let output = (value - in_low) * (out_high - out_low) / (in_high - in_low) + out_low;
+    output = Math.min(output, out_high);
+    output = Math.max(output , out_low);
+    return output;
+}

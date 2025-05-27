@@ -1,142 +1,160 @@
-import { html, render } from 'lit';
-import '@ircam/sc-components';
+import { html, render } from "lit";
+import "@ircam/sc-components";
 
-import resumeAudioContext from '../lib/resume-audio-context.js';
-import loadAudioBuffer from '../lib/load-audio-buffer.js';
-import funnyFullScreen from '../lib/funny-full-screen.js';
-import { scale, LowPassFilter} from './utilities.js';
+import resumeAudioContext from "../lib/resume-audio-context.js";
+import loadAudioBuffer from "../lib/load-audio-buffer.js";
+import funnyFullScreen from "../lib/funny-full-screen.js";
+import { scale, LowPassFilter } from "./utilities.js";
 
-// AUDIO GRAPH
+
+
+// ------- AUDIO GRAPH
 const audioContext = new AudioContext();
 await resumeAudioContext(audioContext);
 
-// const buffer = await loadAudioBuffer('./assets/NappeLisse.wav', audioContext.sampleRate);
-// const vent = await loadAudioBuffer('./assets/VentInstable_01.wav', audioContext.sampleRate);
-// const nappe = await loadAudioBuffer('./assets/NappeLisse.wav', audioContext.sampleRate);
 
-
-// const masterPan = audioContext.createStereoPanner();
-// masterPan.connect(audioContext.destination);
-// masterPan.pan.value = 0;
-
-// const masterGain = audioContext.createGain();
-// masterGain.connect(masterPan);
-
-// const filter = audioContext.createBiquadFilter();
-// filter.type = 'lowpass';
-// filter.frequency.value = 0;
-// filter.connect(masterGain);
-
-// const filter2 = audioContext.createBiquadFilter();
-// filter2.type = 'lowpass';
-// filter2.frequency.value = 0;
-// filter2.connect(masterGain);
-
-// const src = audioContext.createBufferSource();
-// src.buffer = buffer;
-// src.loop = true;
-// src.connect(filter);
-
-// const src_nappe = audioContext.createBufferSource();
-// src.buffer = buffer;
-// src.loop = true;
-// src.connect(masterGain);
-
-// const src_vent = audioContext.createBufferSource();
-// src.buffer = buffer;
-// src.loop = true;
-// src.connect(filter2);
-
-// src.start();
-
-function frequencyControl(value, low=0, high=1) {
+function frequencyControl(value, low = 0, high = 1) {
   const scaledValue = scale(value, low, high, 0, 0.8);
   if (scaledValue < 0.05) {
-    filter.frequency.value = 200 * scaledValue / 0.05;
+    filter.frequency.value = (200 * scaledValue) / 0.05;
   } else {
     filter.frequency.value = 200 * Math.pow(10, 2 * scaledValue);
   }
 }
 
-function display(message) {
-  document.getElementById('print').innerText = message;
-}
+// ------- ORIENTATION
+const accel = new Accelerometer({ frequency: 60 });
+const gyro = new Gyroscope({ frequency: 60 });
 
-function rotateLogo(angle) {
-  document.getElementById('logo').style.setProperty('rotate', `${angle}rad`);
-}
-
-function setSliderValue(id, value){
-  document.getElementById(`slider${id}`).value = value;
-}
-
-// MOVEMENT INTERACTION
-const accel = new Accelerometer({'frequency':60});
-const gyro = new Gyroscope({'frequency':60});
-
-let pitch_accel = 0;
-let pitch_gyro = 0;
+let pitchAccel = 0;
+let pitchGyro = 0;
 let pitch = 0;
-let pitch_a = 0.95;
-let tilt_accel = 0;
-let tilt_gyro = 0;
+let pitchAlpha = 0.95;
+let tiltAccel = 0;
+let tiltGyro = 0;
 let tilt = 0;
-let tilt_a = 0.8;
+let tiltAlpha = 0.8;
+let updateCounter = 0;
 
-accel.addEventListener('reading', () => {
+// Accelerometer update
+accel.addEventListener("reading", () => {
+  // update pitch from accelerometers reading
+  const az = accel.z / 9.81;
+  pitchAlpha = 0.8 + (0.2 * pitch) / 1.57;
+  pitchAccel = Math.asin(az) || pitchAccel;
+  pitch = pitchAlpha * pitchGyro + (1 - pitchAlpha) * pitchAccel;
+
+  // update tilt from accelerometers reading
   const ax = accel.x / 9.81;
   const ay = accel.y / 9.81;
-  const az = accel.z / 9.81;
+  tiltAccel = Math.atan2(ay, Math.sqrt(az ** 2 + ax ** 2));
+  tilt = tiltAlpha * tiltGyro + (1 - tiltAlpha) * tiltAccel;
 
-  pitch_a = 0.8 + 0.2 * pitch / 1.57;
-  pitch_accel = Math.asin(az) || pitch_accel;
-  pitch = pitch_a * pitch_gyro + (1 - pitch_a) * pitch_accel;
+  // check if gyro has been updated
+  updateCounter++;
+  if (updateCounter == 2) {
+    rotateLogo(-tilt);
+    updateSpeed(pitch);
+    updateCounter = 0;
+  }
+});
 
-  tilt_accel = Math.atan2(ay, Math.sqrt(az**2 + ax**2));
-  tilt = tilt_a * tilt_gyro + (1 - tilt_a) * tilt_accel;
-  rotateLogo(-tilt);
-})
-
+// Gyroscope update
 let timeGyro = audioContext.currentTime;
-gyro.addEventListener('reading', () => {
+gyro.addEventListener("reading", () => {
+  // get elapsed time since last reading
   const currentTime = audioContext.currentTime;
   const dt = currentTime - timeGyro;
   timeGyro = currentTime;
 
-  const gy = gyro.y;
-  const gz = gyro.z;
+  // update pitch from gyroscopes reading
+  const gy = gyro.y * dt;
+  pitchGyro = pitch + gy;
+  pitch = pitchAlpha * pitchGyro + (1 - pitchAlpha) * pitchAccel;
 
-  pitch_gyro = pitch + gy * dt;
-  pitch = pitch_a * pitch_gyro + (1 - pitch_a) * pitch_accel;
-  setSliderValue(1, pitch_gyro);
+  // update tilt from gyroscopes reading
+  const gz = gyro.z * dt;
+  tiltGyro = tilt - gz;
+  tilt = tiltAlpha * tiltGyro + (1 - tiltAlpha) * tiltAccel;
 
-  tilt_gyro = tilt - gz * dt;
-  tilt = tilt_a * tilt_gyro + (1 - tilt_a) * tilt_accel;
-  rotateLogo(-tilt);
-  
-})
+  // check if accelero has been updated
+  updateCounter++;
+  if (updateCounter == 2) {
+    rotateLogo(-tilt);
+    updateSpeed(pitch);
+    updateCounter = 0;
+  }
+});
 
-// const panInput = quaternions[0] - quaternions[2];
-// // document.getElementById('slider1').value = scale_input_speed
-// // document.getElementById('slider2').value = scale_speed;
-// frequencyControl(speed, low_bound, high_bound);
-// masterPan.pan.value = scale(panInput, -0.6, 0.6, -1, 1);
-// document.getElementById('f-value').innerText = panInput;
+// -------- SPEED
+const pedalCenter = 45; // deg
+const pedalMaxDiff = 30; // deg
+const pedalMinDiff = 10; // deg
+const maxSpeed = 180; // km/h
+const upResponseTime = (5 * 0.66 * maxSpeed) / 100; // 0 - 100 km/h time
+const downResponseTime = (3 * maxSpeed) / 100; // 100 - 0 km/h time
+let speed = 0;
+let acceleration = 0;
+let timeSpeed = audioContext.currentTime;
 
-// VIBRATIONS
-const navigator = window.navigator;
-navigator.vibrate(1000);
+function updateSpeed(pedalAngle) {
+  const currentTime = audioContext.currentTime;
+  const dt = currentTime - timeSpeed;
+  timeSpeed = currentTime;
 
+  const pedalAngleDeg = (pedalAngle * 180) / Math.PI;
+  if (pedalAngleDeg > pedalCenter) {
+    // positive acceleration
+    acceleration = Math.min((pedalAngleDeg - pedalCenter) / pedalMaxDiff, 1);
+    speed += (acceleration * dt * (maxSpeed - speed)) / upResponseTime;
+  } else {
+    // negative acceleration
+    acceleration = Math.max((pedalAngleDeg - pedalCenter) / pedalMinDiff, -1);
+    speed = speed + (maxSpeed * acceleration * dt) / downResponseTime;
+  }
 
-funnyFullScreen.enable();
+  speed = Math.max(Math.min(speed, 180), 0);
+  setSpeed(speed);
+}
+
+// ------- USER INTERFACE
+
+funnyFullScreen.enable(); // user can toggle fullscreen with two fingers
+
 accel.start();
 gyro.start();
 
-render(html`
+render(
+  html`
+    <h1 id="print"></h1>
 
-  <sc-slider id="slider1" value=0 min=0 max=1.57
-  ></sc-slider>
+    <div class="main-row">
+      <div class="central-elements">
+        <h1 id="speed">0</h1>
+        <h1 id="unit">km/h</h1>
+      </div>
 
-  <img id="logo" src="assets/logo.png" style="width:200px; rotate:0deg"/>
+      <div class="central-elements">
+        <img id="logo" src="assets/logo.svg" />
+        <!-- <img id="logo" src="assets/logo.png"/> -->
+      </div>
 
-`, document.body);
+      <div class="central-elements">
+        <img id="limite" src="assets/limite.svg" />
+      </div>
+    </div>
+  `,
+  document.body
+);
+
+function display(message) {
+  document.getElementById("print").innerText = message;
+}
+
+function rotateLogo(angle) {
+  document.getElementById("logo").style.setProperty("rotate", `${angle}rad`);
+}
+
+function setSpeed(value) {
+  document.getElementById("speed").innerText = Math.round(value);
+}

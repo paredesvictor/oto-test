@@ -130,6 +130,9 @@ funnyFullScreen.enable(); // user can toggle fullscreen with two fingers
 accel.start();
 gyro.start();
 
+const navigator = window.navigator;
+navigator.vibrate(1);
+
 // setInterval(() => {
 //   const angle = document.getElementById('angle').value;
 //   updateSpeed(angle);
@@ -152,6 +155,12 @@ render(
 
       <div class="central-elements">
         <img id="limite" src="assets/limite.svg" />
+        <sc-button
+        style="width:60px"
+        @press=${e => {
+          navigator.vibrate([200]);
+        }}
+        ></sc-button>
         <!-- <sc-slider 
           id='angle'
           orientation="vertical"

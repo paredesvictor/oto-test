@@ -3,7 +3,7 @@ import "@ircam/sc-components";
 
 import resumeAudioContext from "../lib/resume-audio-context.js";
 import funnyFullScreen from "../lib/funny-full-screen.js";
-import { AudioGraph } from "./audioState.js";
+import { AudioGraph } from "./audioManager.js";
 
 // ------- AUDIO GRAPH
 const audioContext = new AudioContext();

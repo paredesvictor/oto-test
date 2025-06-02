@@ -130,8 +130,8 @@ funnyFullScreen.enable(); // user can toggle fullscreen with two fingers
 accel.start();
 gyro.start();
 
-const navigator = window.navigator;
-navigator.vibrate(1);
+// const navigator = window.navigator;
+// navigator.vibrate(1);
 
 // setInterval(() => {
 //   const angle = document.getElementById('angle').value;
@@ -140,7 +140,10 @@ navigator.vibrate(1);
 
 render(
   html`
-    <h1 id="print"></h1>
+
+    <div class="header-row">
+      <h1 id="print"></h1>
+    </div>
 
     <div class="main-row">
       <div class="central-elements">
@@ -155,12 +158,6 @@ render(
 
       <div class="central-elements">
         <img id="limite" src="assets/limite.svg" />
-        <sc-button
-        style="width:60px"
-        @press=${e => {
-          navigator.vibrate([200]);
-        }}
-        ></sc-button>
         <!-- <sc-slider 
           id='angle'
           orientation="vertical"
@@ -170,6 +167,22 @@ render(
           value=${0}
         ></sc-slider> -->
       </div>
+
+    </div>
+
+    <div class="footer-row">
+      <sc-button class="footer-button"
+      @press=${e => {
+        speed = 0;
+        timeSpeed = audioContext.currentTime;
+      }}
+      >R</sc-button>
+      <sc-toggle class="footer-button"
+      value=1
+      @change=${e =>{
+        audioGraph.mute(!e.detail.value);
+      }}
+      ></sc-toggle>
     </div>
   `,
   document.body

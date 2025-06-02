@@ -122,6 +122,13 @@ export class AudioGraph {
         this._distoGain.gain.value = amount;
         this._dryGain.gain.value = 1 - amount;
     }
+
+    mute(active) {
+        this._masterGain.gain.exponentialRampToValueAtTime(
+            active ? 0.0001 : 1,
+            this.context.currentTime + 1
+        )
+    }
 }
 
 

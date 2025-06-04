@@ -193,8 +193,8 @@ class LimitSpeed extends AudioPlayer {
 
 class Brake extends AudioPlayer {
     updateVolume(speed, acceleration) {
-        if (acceleration < -15) {
-            this._gain.gain.value = scale(acceleration, -15, -30, 0, 1);
+        if (acceleration < -0.5) {
+            this._gain.gain.value = scale(acceleration, -0.5, -1, 0, 1);
         } else {
             this._gain.gain.value = 0;
         }

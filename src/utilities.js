@@ -21,6 +21,9 @@ export class LowPassFilter {
 }
 
 export function scale(value, in_low, in_high, out_low, out_high) {
+    if (in_high === in_low) {
+        return out_low;
+    }
     return (value - in_low) * (out_high - out_low) / (in_high - in_low) + out_low;
 }
 

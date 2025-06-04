@@ -4,6 +4,7 @@ import "@ircam/sc-components";
 import resumeAudioContext from "../lib/resume-audio-context.js";
 import funnyFullScreen from "../lib/funny-full-screen.js";
 import { AudioGraph } from "./audioManager.js";
+import { ResonatorEngine } from "./motor.js";
 
 // ------- AUDIO GRAPH
 const audioContext = new AudioContext();
@@ -78,10 +79,10 @@ gyro.addEventListener("reading", () => {
 });
 
 // -------- SPEED
-const pedalCenter = 40; // deg
-const pedalDeadzone = 7; //deg
+const pedalCenter = 30; // deg
+const pedalDeadzone = 5; //deg
 const pedalMaxDiff = 30; // deg
-const pedalMinDiff = 10; // deg
+const pedalMinDiff = 30; // deg
 const maxSpeed = 180; // km/h
 const upResponseTime = (5 * 0.66 * maxSpeed) / 100; // 0 - 100 km/h time
 const downResponseTime = (3 * maxSpeed) / 100; // 100 - 0 km/h time
@@ -119,8 +120,10 @@ function updateSpeed(pedalAngle) {
     acceleration = 0;
     brakeRate = 0;
   }
+  brakeRate /= (3.6 * 9.81); // from km/h/s to g
   setSpeed(speed);
   audioGraph.updateSpeed(speed, brakeRate);
+  display(brakeRate);
 }
 
 // ------- USER INTERFACE

@@ -11,7 +11,10 @@ import { ResonatorEngine } from "./audioSources.js";
 const audioContext = new AudioContext();
 await resumeAudioContext(audioContext);
 
-const buffer = await loadAudioBuffer('/assets/noise.wav', audioContext.sampleRate);
+const buffer = await loadAudioBuffer(
+  "/assets/noise.wav",
+  audioContext.sampleRate
+);
 
 const gain = audioContext.createGain();
 gain.gain.value = 0.5;
@@ -27,26 +30,32 @@ source.start();
 resonators.connectInput(source);
 // source.connect(gain);
 
-
 render(
   html`
-    <sc-slider value=0.5
-    @input=${e => {
+    <sc-slider
+      value="0.5"
+      @input=${(e) => {
         gain.gain.value = e.detail.value;
-    }}
+      }}
     ></sc-slider>
-    <sc-slider id='f' value=0 min=0 max=1
-    @input=${e => {
+    <sc-slider
+      id="f"
+      value="0"
+      min="0"
+      max="1"
+      @input=${(e) => {
         resonators.setFiltersParam(e.detail.value);
-    }}
+      }}
     ></sc-slider>
-    <sc-slider value=1 min=0 max=5
-    @input=${e => {
+    <sc-slider
+      value="1"
+      min="0"
+      max="5"
+      @input=${(e) => {
         resonators.QFactor = e.detail.value;
-        resonators.setFiltersParam(document.getElementById('f').value);
-    }}
+        resonators.setFiltersParam(document.getElementById("f").value);
+      }}
     ></sc-slider>
-    
   `,
   document.body
 );

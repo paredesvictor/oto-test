@@ -1,48 +1,55 @@
 export class LowPassFilter {
-    constructor(upFrequency=1, downFrequency=upFrequency) {
-        this.prevOutput = 0;
-        this.upRC = 1 / (2 * Math.PI * upFrequency);
-        this.downRC = 1 / (2 * Math.PI * downFrequency);
-    }
+  constructor(upFrequency = 1, downFrequency = upFrequency) {
+    this.prevOutput = 0;
+    this.upRC = 1 / (2 * Math.PI * upFrequency);
+    this.downRC = 1 / (2 * Math.PI * downFrequency);
+  }
 
-    process(input, dt) {
-        let alpha = 0;
-        if (input - this.prevOutput > 0) {
-            alpha = dt / (dt + this.upRC);
-        } else {
-            alpha = dt / (dt + this.downRC);
-        }
-        const output = this.prevOutput + alpha * (input - this.prevOutput);
-        this.prevOutput = output;
-        return output;
+  process(input, dt) {
+    let alpha = 0;
+    if (input - this.prevOutput > 0) {
+      alpha = dt / (dt + this.upRC);
+    } else {
+      alpha = dt / (dt + this.downRC);
     }
+    const output = this.prevOutput + alpha * (input - this.prevOutput);
+    this.prevOutput = output;
+    return output;
+  }
 
-    set cutoffFrequency(value) {
-        this.upRC = 1 / (2 * Math.PI * value);
-    }
+  set cutoffFrequency(value) {
+    this.upRC = 1 / (2 * Math.PI * value);
+  }
 
-    get cutoffFrequency() {
-        return 1 / (2 * Math.PI * this.upRC);
-    }
+  get cutoffFrequency() {
+    return 1 / (2 * Math.PI * this.upRC);
+  }
 }
 
 export function scale(value, in_low, in_high, out_low, out_high) {
-    if (in_high === in_low) {
-        return out_low;
-    }
-    return (value - in_low) * (out_high - out_low) / (in_high - in_low) + out_low;
+  if (in_high === in_low) {
+    return out_low;
+  }
+  return (
+    ((value - in_low) * (out_high - out_low)) / (in_high - in_low) + out_low
+  );
 }
 
 export function scaleClip(value, in_low, in_high, out_low, out_high) {
-    let output = (value - in_low) * (out_high - out_low) / (in_high - in_low) + out_low;
-    output = Math.min(output, out_high);
-    output = Math.max(output , out_low);
-    return output;
+  let output =
+    ((value - in_low) * (out_high - out_low)) / (in_high - in_low) + out_low;
+  output = Math.min(output, out_high);
+  output = Math.max(output, out_low);
+  return output;
 }
 
-export function frequencyControl(value, minFreq=200, maxFreq=20000) {
-    const factor = Math.log10(maxFreq / minFreq);
-    return 200 * Math.pow(10, factor * value);
+export function frequencyControl(value, minFreq = 200, maxFreq = 20000) {
+  const factor = Math.log10(maxFreq / minFreq);
+  return 200 * Math.pow(10, factor * value);
+}
+
+export function volumeControl(value) {
+  return Math.pow(value, 3);
 }
 
 export function makeDistortionCurve(amount) {

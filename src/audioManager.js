@@ -1,6 +1,6 @@
 import loadAudioBuffer from "../lib/load-audio-buffer.js";
 import { ResonatorEngine, AudioPlayer } from "./audioSources.js";
-import { scale, scaleClip, frequencyControl, makeDistortionCurve } from "./utilities.js";
+import { LowPassFilter, scale, scaleClip, frequencyControl, makeDistortionCurve } from "./utilities.js";
 
 export class AudioGraph {
     constructor(audioContext) {
@@ -98,9 +98,9 @@ export class AudioGraph {
         this.sources.forEach(async source => await source.init());
     }
 
-    updateSpeed(speed, acceleration) {
+    updateSpeed(speed, dt) {
+        const acceleration = (speed - this.carSpeed) / dt;
         this.carSpeed = speed;
-        this.carAcceleration = acceleration;
         this.sources.forEach(source => source.update(speed, acceleration));
     }
 
@@ -134,25 +134,37 @@ export class AudioGraph {
 }
 
 class NearLimit extends AudioPlayer {
+    constructor(audioContext, destination, fileName, limSpeed, limDiff, loop=false, initGain=0) {
+        super(audioContext, destination, fileName, limSpeed, limDiff, loop, initGain);
+        this.lpfilter = new LowPassFilter(5, 0.05);
+        this.time = this.context.currentTime || 0;
+    }
+
     update(speed, acceleration) {
+        const current = this.context.currentTime;
+        const dt = Math.min(current - this.time, 0.1);
+        this.time = current;
+        const fAcceleration = this.lpfilter.process(acceleration, dt) || 1;
+        const accelFactor = scaleClip(fAcceleration, 0.5, 2, 0, 1);
+        console.log(fAcceleration, accelFactor);
         let value = speed - (this.limSpeed - this.limDiff);
         value = scaleClip(value, -this.limDiff , this.limDiff, 0, 0.5);
-        this.gain.gain.value = value;
+        this.gain.gain.value = value * accelFactor;
         this.filter.frequency.value = frequencyControl(value);
     }
 }
 
 class LimitSpeed extends AudioPlayer {
-    update(speed, acceleration) {
+    update(speed, _) {
         const speedDiff = speed - this.limSpeed;
         this.gain.gain.value = scaleClip(speedDiff, 0, this.limDiff, 0, 1);
     }
 }
 
 class Brake extends AudioPlayer {
-    update(speed, acceleration) {
+    update(_, acceleration) {
         if (acceleration < -0.5) {
-            this.gain.gain.value = scale(acceleration, -0.5, -1, 0, 1);
+            this.gain.gain.value = scaleClip(acceleration, -5, -10, 0, 1);
         } else {
             this.gain.gain.value = 0;
         }
@@ -160,7 +172,7 @@ class Brake extends AudioPlayer {
 }
 
 class SpeedUp extends AudioPlayer {
-    update(speed, acceleration) {
+    update(speed, _) {
         if (speed > this.limSpeed && this.carSpeed < this.limSpeed) {
             this.play();
         }
@@ -169,7 +181,7 @@ class SpeedUp extends AudioPlayer {
 }
 
 class SpeedDown extends AudioPlayer {
-    update(speed, acceleration) {
+    update(speed, _) {
         if (speed < this.limSpeed && this.carSpeed > this.limSpeed) {
             this.play();
         }
@@ -178,7 +190,7 @@ class SpeedDown extends AudioPlayer {
 }
 
 class Motor extends AudioPlayer {
-    update(speed, acceleration) {
+    update(speed, _) {
         this.player.detune.value = scale(speed, 0, 130, -100, 0);
     }
 }

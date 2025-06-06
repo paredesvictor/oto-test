@@ -1,22 +1,28 @@
 export class LowPassFilter {
-    constructor(cutoffFrequency = 1) {
-        this._prevOutput = 0;
-        this._rc = 1 / (2 * Math.PI * cutoffFrequency);
+    constructor(upFrequency=1, downFrequency=upFrequency) {
+        this.prevOutput = 0;
+        this.upRC = 1 / (2 * Math.PI * upFrequency);
+        this.downRC = 1 / (2 * Math.PI * downFrequency);
     }
 
     process(input, dt) {
-        const alpha = dt / (dt + this._rc);
-        const output = this._prevOutput + alpha * (input - this._prevOutput);
-        this._prevOutput = output;
+        let alpha = 0;
+        if (input - this.prevOutput > 0) {
+            alpha = dt / (dt + this.upRC);
+        } else {
+            alpha = dt / (dt + this.downRC);
+        }
+        const output = this.prevOutput + alpha * (input - this.prevOutput);
+        this.prevOutput = output;
         return output;
     }
 
     set cutoffFrequency(value) {
-        this._rc = 1 / (2 * Math.PI * value);
+        this.upRC = 1 / (2 * Math.PI * value);
     }
 
     get cutoffFrequency() {
-        return 1 / (2 * Math.PI * this._rc);
+        return 1 / (2 * Math.PI * this.upRC);
     }
 }
 

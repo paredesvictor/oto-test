@@ -48,7 +48,7 @@ export class ResonatorEngine {
             this.filters[i].frequency.value = Math.min(freq, 20000); 
             this.filters[i].Q.value = scale(value, 0, 1, 50, 10) * this.QFactor;
         }
-        this.lowpass.frequency.value = frequencyControl(value, 600, 2000);
+        this.lowpass.frequency.value = frequencyControl(value, 1000, 2000);
     }
 
 	connectInput(inputNode) {

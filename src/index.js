@@ -62,7 +62,7 @@ render(
       </div>
 
       <div class="central-elements">
-        <img id="limit-sign" src="assets/limite_90.svg" />
+        <img id="limit-sign" src="assets/limite_130.svg" />
       </div>
 
       <div class="central-elements">
@@ -186,7 +186,6 @@ const upResponseTime = (5 * 0.66 * maxSpeed) / 100; // 0 - 100 km/h time
 const downResponseTime = (3 * maxSpeed) / 100; // 100 - 0 km/h time
 let speed = 0;
 let acceleration = 0;
-let brakeRate = 0;
 let timeSpeed = audioContext.currentTime;
 
 function updateSpeed(pedalAngle) {
@@ -202,7 +201,6 @@ function updateSpeed(pedalAngle) {
     acceleration = Math.min(acceleration, 1);
     speed += (acceleration * dt * (maxSpeed - speed)) / upResponseTime;
     speed = Math.min(speed, 180);
-    brakeRate = 0;
   } else if (pedalAngleDeg < pedalCenter - pedalDeadzone / 2) {
     // negative acceleration
     acceleration =
@@ -212,13 +210,8 @@ function updateSpeed(pedalAngle) {
       speed + (maxSpeed * acceleration * dt) / downResponseTime,
       0
     );
-    brakeRate = (newSpeed - speed) / dt;
     speed = newSpeed;
-  } else {
-    acceleration = 0;
-    brakeRate = 0;
   }
-  brakeRate /= (3.6 * 9.81); // from km/h/s to g
   setSpeed(speed);
-  audioGraph.updateSpeed(speed, brakeRate);
+  audioGraph.updateSpeed(speed, dt);
 }

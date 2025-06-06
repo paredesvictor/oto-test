@@ -5,7 +5,7 @@ import resumeAudioContext from "../lib/resume-audio-context.js";
 import funnyFullScreen from "../lib/funny-full-screen.js";
 import loadAudioBuffer from "../lib/load-audio-buffer.js";
 import { AudioGraph } from "./audioManager.js";
-import { ResonatorEngine } from "./motor.js";
+import { ResonatorEngine } from "./audioSources.js";
 
 // ------- AUDIO GRAPH
 const audioContext = new AudioContext();

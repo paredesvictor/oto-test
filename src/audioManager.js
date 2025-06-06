@@ -1,237 +1,206 @@
 import loadAudioBuffer from "../lib/load-audio-buffer.js";
-import { scale, scaleClip } from "./utilities.js";
+import { ResonatorEngine, AudioPlayer } from "./audioSources.js";
+import { scale, scaleClip, frequencyControl, makeDistortionCurve } from "./utilities.js";
 
 export class AudioGraph {
     constructor(audioContext) {
         this.context = audioContext;
 
-        this._masterPan = this.context.createStereoPanner();
-        this._masterPan.connect(this.context.destination);
-        this._masterPan.pan.value = 0;
+        this.masterPan = this.context.createStereoPanner();
+        this.masterPan.connect(this.context.destination);
+        this.masterPan.pan.value = 0;
         
-        this._distoGain = this.context.createGain();
-        this._distoGain.connect(this._masterPan);
-        this._distoGain.gain.value = 0;
-        this._dryGain = this.context.createGain();
-        this._dryGain.connect(this._masterPan);
-        this._masterDisto = this.context.createWaveShaper();
-        this._masterDisto.connect(this._distoGain);
-        this._masterDisto.curve = makeDistortionCurve(400);
-        this._masterDisto.oversample = "4x";
+        this.distoGain = this.context.createGain();
+        this.distoGain.connect(this.masterPan);
+        this.distoGain.gain.value = 0;
+        this.dryGain = this.context.createGain();
+        this.dryGain.connect(this.masterPan);
+        this.masterDisto = this.context.createWaveShaper();
+        this.masterDisto.connect(this.distoGain);
+        this.masterDisto.curve = makeDistortionCurve(400);
+        this.masterDisto.oversample = "4x";
 
-        this._masterGain = this.context.createGain();
-        this._masterGain.connect(this._dryGain);
-        this._masterGain.connect(this._masterDisto);
+        this.masterGain = this.context.createGain();
+        this.masterGain.connect(this.dryGain);
+        this.masterGain.connect(this.masterDisto);
 
-        this._limSpeed = 91;
-        this._limDiff = 15;
-        this._carSpeed = 0;
+        this.limSpeed = 0;
+        this.limDiff = 10;
+        this.carSpeed = 0;
+        this.carAcceleration = 0;
 
-        this._players = [];
+        this.sources = [];
     }
 
     async initializeGraph() {
-        this._players.push(new NormalSpeed(
+        // Sources must have an init() and update(speed, accel) method
+        this.sources.push(new NearLimit(
             this.context,
-            this._masterGain,
+            this.masterGain,
             'windStable.wav',
-            this._limSpeed,
-            this._limDiff,
+            this.limSpeed,
+            this.limDiff,
             true
         ));
-        this._players.push(new LimitSpeed(
+
+        this.sources.push(new LimitSpeed(
             this.context,
-            this._masterGain,
+            this.masterGain,
             'windUnstable.wav',
-            this._limSpeed,
-            this._limDiff,
+            this.limSpeed,
+            this.limDiff,
             true
         ));
-        this._players.push(new Brake(
+
+        this.sources.push(new Brake(
             this.context,
-            this._masterGain,
+            this.masterGain,
             'brake.wav',
-            this._limSpeed,
-            this._limDiff,
+            this.limSpeed,
+            this.limDiff,
             true
         ));
-        this._players.push(new SpeedUp(
+
+        this.sources.push(new SpeedUp(
             this.context,
-            this._masterGain,
+            this.masterGain,
             'speedUp.wav',
-            this._limSpeed,
-            this._limDiff
+            this.limSpeed,
+            this.limDiff
         ));
-        this._players.push(new SpeedDown(
+
+        this.sources.push(new SpeedDown(
             this.context,
-            this._masterGain,
+            this.masterGain,
             'speedDown.wav',
-            this._limSpeed,
-            this._limDiff
+            this.limSpeed,
+            this.limDiff
         ));
-        this._players.forEach(async player => await player.initPlayer());
 
-        this._oscGain1 = this.context.createGain();
-        this._oscGain1.connect(this._masterGain);
-        this._oscGain1.gain.value = 0;
-        this._oscGain1.gain.linearRampToValueAtTime(0.05, 2);
+        const resonator = new Resonator(
+            this.context,
+            this.masterGain,
+            this.limSpeed,
+            this.limDiff
+        );
+        this.sources.push(resonator);
 
-        this._osc1 = this.context.createOscillator();
-        this._osc1.frequency.value = 90;
-        this._osc1.connect(this._oscGain1);
-        this._osc1.start();
+        this.sources.push(new Motor(
+            this.context,
+            resonator.input,
+            'angenoise.wav',
+            this.limSpeed,
+            this.limDiff,
+            true,
+            1
+        ));
 
-        this._osc2 = this.context.createOscillator();
-        this._osc2.frequency.value = 94.77;
-        this._osc2.connect(this._oscGain1);
-        this._osc2.start();
-
-        this._oscGain2 = this.context.createGain();
-        this._oscGain2.connect(this._masterGain);
-        this._oscGain2.gain.value = 0;
-        this._oscGain2.gain.linearRampToValueAtTime(0.025, 2);
-
-        this._osc3 = this.context.createOscillator();
-        this._osc3.frequency.value = 171.9;
-        this._osc3.connect(this._oscGain2);
-        this._osc3.start();
-
-        this._osc4 = this.context.createOscillator();
-        this._osc4.frequency.value = 176.5;
-        this._osc4.connect(this._oscGain2);
-        this._osc4.start();
+        this.sources.forEach(async source => await source.init());
     }
 
     updateSpeed(speed, acceleration) {
-        this._carSpeed = speed;
-        this._players.forEach(player => player.updateVolume(speed, acceleration));
-        this._osc1.frequency.value = scale(speed, 0, this._limSpeed/2, 90, 170);
-        this._osc2.frequency.value = scale(speed, 0, this._limSpeed/2, 94.77, 179.0);
-        this._osc3.frequency.value = scale(speed, 0, this._limSpeed/2, 171.9, 324.7);
-        this._osc4.frequency.value = scale(speed, 0, this._limSpeed/2, 176.5, 333.5);
+        this.carSpeed = speed;
+        this.carAcceleration = acceleration;
+        this.sources.forEach(source => source.update(speed, acceleration));
+    }
+
+    changeLimit(speed) {
+        this.limDiff = speed;
+        this.sources.forEach(source => source.changeLimit(speed));
+        this.sources.forEach(source => source.update(
+            this.carSpeed,
+            this.carAcceleration
+        ));
     }
 
     updatePan(tilt) {
         const value = scaleClip(tilt, -Math.PI/4, Math.PI/4, -1, 1);
-        this._masterPan.pan.value = value;
-        const lateralTolerance = 1 - this._carSpeed**0.75 / 180**0.75;
+        this.masterPan.pan.value = value;
+        const lateralTolerance = 1 - this.carSpeed**0.75 / 180**0.75;
         this.setDisto(Math.max(Math.abs(value) - lateralTolerance, 0));
     }
 
     setDisto(amount) {
-        this._distoGain.gain.value = amount;
-        this._dryGain.gain.value = 1 - amount;
+        this.distoGain.gain.value = amount;
+        this.dryGain.gain.value = 1 - amount;
     }
 
     mute(active) {
-        this._masterGain.gain.exponentialRampToValueAtTime(
+        this.masterGain.gain.exponentialRampToValueAtTime(
             active ? 0.0001 : 1,
             this.context.currentTime + 1
         )
     }
 }
 
-
-
-class AudioPlayer {
-    constructor(audioContext, destination, fileName, limSpeed, limDiff, loop=false) {
-        this._gain = audioContext.createGain();
-        this._gain.connect(destination);
-        this._gain.gain.value = 0;
-
-        this._filter = audioContext.createBiquadFilter();
-        this._filter.connect(this._gain);
-        this._filter.frequency.value = 20000;
-
-        this._loop = loop;
-        this._limSpeed = limSpeed;
-        this._limDiff = limDiff;
-        this._carSpeed = 0;
-
-        this._fileName = fileName;
-        this._context = audioContext;
-    }
-
-    async initPlayer() {
-        this._buffer = await loadAudioBuffer(`./assets/${this._fileName}`, this._context.sampleRate);
-        if (this._loop) {
-            const source = this._context.createBufferSource();
-            source.buffer = this._buffer;
-            source.connect(this._filter);
-            source.loop = true;
-            source.start();
-        }
-    }
-
-    play() {
-        this._gain.gain.value = 1;
-        const source = this._context.createBufferSource();
-        source.buffer = this._buffer;
-        source.connect(this._filter);
-        source.loop = false;
-        source.start();
-    }
-
-    updateVolume(speed, acceleration) {}
-}
-
-class NormalSpeed extends AudioPlayer {
-    updateVolume(speed, acceleration) {
-        let value = speed - (this._limSpeed - this._limDiff);
-        value = scaleClip(value, -this._limDiff , this._limDiff, 0, 0.5);
-        this._gain.gain.value = value;
-        this._filter.frequency.value = frequencyControl(value);
+class NearLimit extends AudioPlayer {
+    update(speed, acceleration) {
+        let value = speed - (this.limSpeed - this.limDiff);
+        value = scaleClip(value, -this.limDiff , this.limDiff, 0, 0.5);
+        this.gain.gain.value = value;
+        this.filter.frequency.value = frequencyControl(value);
     }
 }
 
 class LimitSpeed extends AudioPlayer {
-    updateVolume(speed, acceleration) {
-        const speedDiff = speed - this._limSpeed;
-        this._gain.gain.value = scaleClip(speedDiff, 0, this._limDiff, 0, 1);
+    update(speed, acceleration) {
+        const speedDiff = speed - this.limSpeed;
+        this.gain.gain.value = scaleClip(speedDiff, 0, this.limDiff, 0, 1);
     }
 }
 
 class Brake extends AudioPlayer {
-    updateVolume(speed, acceleration) {
+    update(speed, acceleration) {
         if (acceleration < -0.5) {
-            this._gain.gain.value = scale(acceleration, -0.5, -1, 0, 1);
+            this.gain.gain.value = scale(acceleration, -0.5, -1, 0, 1);
         } else {
-            this._gain.gain.value = 0;
+            this.gain.gain.value = 0;
         }
     }
 }
 
 class SpeedUp extends AudioPlayer {
-    updateVolume(speed, acceleration) {
-        if (speed > this._limSpeed && this._carSpeed < this._limSpeed) {
+    update(speed, acceleration) {
+        if (speed > this.limSpeed && this.carSpeed < this.limSpeed) {
             this.play();
         }
-        this._carSpeed = speed;
+        this.carSpeed = speed;
     }
 }
 
 class SpeedDown extends AudioPlayer {
-    updateVolume(speed, acceleration) {
-        if (speed < this._limSpeed && this._carSpeed > this._limSpeed) {
+    update(speed, acceleration) {
+        if (speed < this.limSpeed && this.carSpeed > this.limSpeed) {
             this.play();
         }
-        this._carSpeed = speed;
+        this.carSpeed = speed;
     }
 }
 
-function frequencyControl(value) {
-    return 200 * Math.pow(10, 2 * value);
+class Motor extends AudioPlayer {
+    update(speed, acceleration) {
+        this.player.detune.value = scale(speed, 0, 130, -100, 0);
+    }
 }
 
-function makeDistortionCurve(amount) {
-  const k = typeof amount === "number" ? amount : 50;
-  const n_samples = 44100;
-  const curve = new Float32Array(n_samples);
-  const deg = Math.PI / 180;
+class Resonator extends ResonatorEngine {
+    constructor(audioContext, destination, limSpeed, limDiff) {
+        super(audioContext);
+        this.output.connect(destination);
 
-  for (let i = 0; i < n_samples; i++) {
-    const x = (i * 2) / n_samples - 1;
-    curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
-  }
-  return curve;
+        this.limSpeed = limSpeed;
+        this.limDiff = limDiff;
+        this.carSpeed = 0;
+    }
+
+    async init() {}
+
+    update(speed, _) {
+        const value = scale(speed, 0, 130, 0, 1);
+        this.setFiltersParam(value);
+    }
+
+    changeLimit(speed) {
+        this.limSpeed = speed;
+    }
 }

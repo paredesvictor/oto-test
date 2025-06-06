@@ -4,17 +4,115 @@ import "@ircam/sc-components";
 import resumeAudioContext from "../lib/resume-audio-context.js";
 import funnyFullScreen from "../lib/funny-full-screen.js";
 import { AudioGraph } from "./audioManager.js";
-import { ResonatorEngine } from "./motor.js";
+import { Scenario } from "./scenario.js";
 
-// ------- AUDIO GRAPH
+// ------- AUDIO GRAPH ---------------------
 const audioContext = new AudioContext();
 await resumeAudioContext(audioContext);
 const audioGraph = new AudioGraph(audioContext);
 audioGraph.initializeGraph();
+audioGraph.changeLimit(130);
 
-// ------- ORIENTATION
+// ------- SENSORS --------------------------
 const accel = new Accelerometer({ frequency: 60 });
+accel.start();
 const gyro = new Gyroscope({ frequency: 60 });
+gyro.start();
+console.log(accel);
+
+funnyFullScreen.enable();
+
+setInterval(() => {
+  const angle = document.getElementById('angle').value;
+  updateSpeed(angle);
+}, 1000/60);
+
+// ------- SCENARI ---------------------------
+const speedScenario = new Scenario([
+  [30, 10],
+  [50, 10],
+  [80, 10],
+  [90, 10],
+  [110, 10],
+  [130, 10],
+], 
+speed => {
+  changeLimitSign(speed);
+  audioGraph.changeLimit(speed);
+}
+);
+
+// ------ VISUAL INTERFACE ----------------------
+render(
+  html`
+
+    <div class="header-row">
+      <h1 id="print"></h1>
+    </div>
+
+    <div class="main-row">
+      <div class="central-elements">
+        <h1 id="speed">0</h1>
+        <h1 id="unit">km/h</h1>
+      </div>
+
+      <div class="central-elements">
+        <img id="logo" src="assets/logo.svg" />
+        <!-- <img id="logo" src="assets/logo.png"/> -->
+      </div>
+
+      <div class="central-elements">
+        <img id="limit-sign" src="assets/limite_90.svg" />
+      </div>
+
+      <div class="central-elements">
+        <sc-slider 
+          id='angle'
+          orientation="vertical"
+          style="height:300px; width:50px"
+          min=0
+          max=${Math.PI / 2}
+          value=${0}
+        ></sc-slider>
+      </div>
+      
+    </div>
+
+    <div class="footer-row">
+      <sc-button class="footer-button"
+      @press=${e => {
+        speed = 0;
+        timeSpeed = audioContext.currentTime;
+      }}
+      >R</sc-button>
+      <sc-toggle class="footer-button"
+      value=1
+      @change=${e =>{
+        audioGraph.mute(!e.detail.value);
+      }}
+      ></sc-toggle>
+    </div>
+  `,
+  document.body
+);
+
+function display(message) {
+  document.getElementById("print").innerText = message;
+}
+
+function rotateLogo(angle) {
+  document.getElementById("logo").style.setProperty("rotate", `${angle}rad`);
+}
+
+function setSpeed(value) {
+  document.getElementById("speed").innerText = Math.round(value);
+}
+
+function changeLimitSign(speed) {
+  document.getElementById("limit-sign").src = `assets/limite_${speed}.svg`;
+}
+
+// ------- ORIENTATION -------------------
 
 let pitchAccel = 0;
 let pitchGyro = 0;
@@ -78,7 +176,7 @@ gyro.addEventListener("reading", () => {
   }
 });
 
-// -------- SPEED
+// -------- SPEED -------------------
 const pedalCenter = 30; // deg
 const pedalDeadzone = 5; //deg
 const pedalMaxDiff = 30; // deg
@@ -123,82 +221,4 @@ function updateSpeed(pedalAngle) {
   brakeRate /= (3.6 * 9.81); // from km/h/s to g
   setSpeed(speed);
   audioGraph.updateSpeed(speed, brakeRate);
-  display(brakeRate);
-}
-
-// ------- USER INTERFACE
-
-funnyFullScreen.enable(); // user can toggle fullscreen with two fingers
-
-accel.start();
-gyro.start();
-
-// const navigator = window.navigator;
-// navigator.vibrate(1);
-
-// setInterval(() => {
-//   const angle = document.getElementById('angle').value;
-//   updateSpeed(angle);
-// }, 1000/60)
-
-render(
-  html`
-
-    <div class="header-row">
-      <h1 id="print"></h1>
-    </div>
-
-    <div class="main-row">
-      <div class="central-elements">
-        <h1 id="speed">0</h1>
-        <h1 id="unit">km/h</h1>
-      </div>
-
-      <div class="central-elements">
-        <img id="logo" src="assets/logo.svg" />
-        <!-- <img id="logo" src="assets/logo.png"/> -->
-      </div>
-
-      <div class="central-elements">
-        <img id="limite" src="assets/limite.svg" />
-        <!-- <sc-slider 
-          id='angle'
-          orientation="vertical"
-          style="height:300px; width:50px"
-          min=0
-          max=${Math.PI / 2}
-          value=${0}
-        ></sc-slider> -->
-      </div>
-
-    </div>
-
-    <div class="footer-row">
-      <sc-button class="footer-button"
-      @press=${e => {
-        speed = 0;
-        timeSpeed = audioContext.currentTime;
-      }}
-      >R</sc-button>
-      <sc-toggle class="footer-button"
-      value=1
-      @change=${e =>{
-        audioGraph.mute(!e.detail.value);
-      }}
-      ></sc-toggle>
-    </div>
-  `,
-  document.body
-);
-
-function display(message) {
-  document.getElementById("print").innerText = message;
-}
-
-function rotateLogo(angle) {
-  document.getElementById("logo").style.setProperty("rotate", `${angle}rad`);
-}
-
-function setSpeed(value) {
-  document.getElementById("speed").innerText = Math.round(value);
 }

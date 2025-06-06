@@ -33,3 +33,21 @@ export function scaleClip(value, in_low, in_high, out_low, out_high) {
     output = Math.max(output , out_low);
     return output;
 }
+
+export function frequencyControl(value, minFreq=200, maxFreq=20000) {
+    const factor = Math.log10(maxFreq / minFreq);
+    return 200 * Math.pow(10, factor * value);
+}
+
+export function makeDistortionCurve(amount) {
+  const k = typeof amount === "number" ? amount : 50;
+  const n_samples = 44100;
+  const curve = new Float32Array(n_samples);
+  const deg = Math.PI / 180;
+
+  for (let i = 0; i < n_samples; i++) {
+    const x = (i * 2) / n_samples - 1;
+    curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+  }
+  return curve;
+}

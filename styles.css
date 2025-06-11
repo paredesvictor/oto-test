@@ -30,6 +30,13 @@ body {
   padding: 20px 20px 20px 20px;
 }
 
+#main-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  rotate: 0deg;
+}
+
 .header-row {
   width: 100%;
   height: 100px;
@@ -56,7 +63,7 @@ body {
   border: none;
   background-color: rgba(0, 0, 0, 0);
   --sc-toggle-active-color: rgba(0, 0, 0, 0);
-  --sc-toggle-inactive-color: rgba(0, 0, 0, 0.5);
+  --sc-toggle-inactive-color: rgba(0, 0, 0, 0);
 }
 
 .button-image {
@@ -126,9 +133,26 @@ h1 {
   rotate: 0deg;
 }
 
-#next-sign {
+#next-sign-container {
     display: flex;
     flex-direction: row-reverse;
+}
+
+#next-sign {
+  width: 25%;
+  animation: fadeOpacity 1.5s infinite;
+}
+
+@keyframes fadeOpacity {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 #limit-sign {

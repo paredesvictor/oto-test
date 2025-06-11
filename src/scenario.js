@@ -1,5 +1,5 @@
 export class Scenario {
-  constructor(steps, callBack, loop = false) {
+  constructor(steps, callBackNow, callBackSoon, loop = false) {
     this.events = [];
     this.durations = [];
     steps.forEach((step) => {
@@ -7,7 +7,8 @@ export class Scenario {
       this.durations.push(1000 * step[1]);
     });
 
-    this.callBack = callBack;
+    this.callBackNow = callBackNow;
+    this.callBackSoon = callBackSoon;
     this.loop = loop;
 
     this.initScenario();
@@ -18,6 +19,7 @@ export class Scenario {
     this.currentDuration = 0;
     this.currentIndex = -1;
     this.currentTimerId = 0;
+    this.soonTimerId = 0;
     this.stepElapsed = 0;
     this.refTime = 0;
   }
@@ -32,17 +34,29 @@ export class Scenario {
     }
 
     this.refTime = Date.now();
-
     this.currentIndex += 1;
     this.currentSpeed = this.events[this.currentIndex];
     this.currentDuration = this.durations[this.currentIndex];
+
+    if (this.currentIndex <= this.events.length - 2)  {
+      this.soonTimerId = setTimeout(
+        () => this.callBackSoon(this.events[this.currentIndex + 1]),
+        this.currentDuration - 10000
+      )
+    } else {
+      if (this.loop) {
+        this.soonTimerId = setTimeout(
+          () => this.callBackSoon(this.events[0]),
+          this.currentDuration - 10000
+        )
+      } 
+    }
 
     this.currentTimerId = setTimeout(
       () => this.nextStep(),
       this.currentDuration
     );
-
-    this.callBack(this.currentSpeed);
+    this.callBackNow(this.currentSpeed);
   }
 
   start() {
@@ -51,10 +65,12 @@ export class Scenario {
 
   pause() {
     clearTimeout(this.currentTimerId);
+    clearTimeout(this.soonTimerId);
     this.elapsedTime = Date.now() - this.refTime;
   }
 
   resume() {
+    // todo : start the "soon" timer
     this.refTime = Date.now();
     this.currentTimerId = setTimeout(
       () => this.nextStep(),
@@ -64,6 +80,7 @@ export class Scenario {
 
   stop() {
     clearTimeout(this.currentTimerId);
+    clearTimeout(this.soonTimerId);
     this.initScenario();
   }
 }

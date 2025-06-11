@@ -17,54 +17,87 @@ audioGraph.changeLimit(0);
 const accel = new Accelerometer({ frequency: 60 });
 const gyro = new Gyroscope({ frequency: 60 });
 funnyFullScreen.enable();
+document.documentElement.requestFullscreen();
+
+// ------- SCENARI ---------------------------
+const speedScenario = new Scenario(
+  [
+    // [30, 10],
+    // [50, 10],
+    // [80, 10],
+    // [90, 10],
+    // [110, 10],
+    // [130, 10],
+    // [80, 10],
+    [110, 15],
+    [80, 15],
+  ],
+  (speed) => {
+    changeLimitSign(speed);
+    audioGraph.changeLimit(speed);
+    audioGraph.play('limitChange');
+    hideNextSign();
+  },
+  (speed) => {
+    changeNextSign(speed);
+    audioGraph.play('nextLimit');
+    setTimeout(() => audioGraph.changeLimitRamp(speed), 2000);
+  },
+  true
+);
 
 // ------ VISUAL INTERFACE ----------------------
 render(
   html`
-
-    <div class="main-row">
-      <div class="left-element">
-        <img id="logo" src="assets/LogoBlancOTO.svg"/>
-        <h1 id="print"></h1>
-      </div>
-
-      <div class="central-column">
-        <div class="central-elements">
-          <img id="arrow" src="assets/RondFleche_1.svg" />
-          <h1 id="speed">0</h1>
-          <h1 id="unit">km/h</h1>
-        </div> 
-      </div>
-
-      <div class="right-elements">
-        <div id="next-sign">
-          <img src="assets/limite_30.svg" style="width: 25%" />
+    <div id="main-column">
+      <div class="main-row">
+        <div class="left-element">
+          <img id="logo" src="assets/LogoBlancOTO.svg"/>
+          <h1 id="print"></h1>
         </div>
-        <img id="limit-sign" src="assets/limite_130.svg" />
-      </div>
-    </div>
 
-    <div class="footer-row">
-      <div class="button-image">
-        <sc-toggle
-          class="footer-button"
-          id="on-off"
-          @change=${(e) => {
-            timeSpeed = audioContext.currentTime;
-            audioGraph.mute(!e.detail.value);
-            if (e.detail.value) {
-              console.log("started");
-              accel.start();
-              gyro.start();
-            } else {
-              console.log("stopped");
-              accel.stop();
-              gyro.stop();
-              speed = 0;
-              updateSpeed(speed);
-            }
-          }}
-        ></sc-toggle>
+        <div class="central-column">
+          <div class="central-elements">
+            <img id="arrow" src="assets/RondFleche_1.svg"/>
+            <h1 id="speed">0</h1>
+            <h1 id="unit">km/h</h1>
+          </div> 
+        </div>
+
+        <div class="right-elements">
+          <div id="next-sign-container">
+            <img id="next-sign" src="assets/limite_30.svg" />
+          </div>
+          <img id="limit-sign" src="assets/limite_130.svg" />
+        </div>
+      </div>
+
+      <div class="footer-row">
+        <div class="button-image">
+          <sc-toggle
+            class="footer-button"
+            id="on-off"
+            @change=${(e) => {
+              timeSpeed = audioContext.currentTime;
+              audioGraph.mute(!e.detail.value);
+              if (e.detail.value) {
+                console.log("started");
+                accel.start();
+                gyro.start();
+                speed = 0;
+                updateSpeed(speed);
+                speedScenario.start();
+              } else {
+                console.log("stopped");
+                accel.stop();
+                gyro.stop();
+                speed = 0;
+                updateSpeed(speed);
+                speedScenario.stop();
+              }
+            }}
+          ></sc-toggle>
+        </div>
       </div>
     </div>
   `,
@@ -76,7 +109,7 @@ function display(message) {
 }
 
 function rotateLogo(angle) {
-  document.getElementById("logo").style.setProperty("rotate", `${angle}rad`);
+  document.getElementById("main-column").style.setProperty("rotate", `${angle}rad`);
 }
 
 function setSpeed(value) {
@@ -85,6 +118,15 @@ function setSpeed(value) {
 
 function changeLimitSign(speed) {
   document.getElementById("limit-sign").src = `assets/limite_${speed}.svg`;
+}
+
+function changeNextSign(speed) {
+  document.getElementById("next-sign").src = `assets/limite_${speed}.svg`;
+  document.getElementById("next-sign-container").style.setProperty("opacity", 1);
+}
+
+function hideNextSign() {
+  document.getElementById("next-sign-container").style.setProperty("opacity", 0);
 }
 
 function rotateArrow(angle) {
@@ -98,28 +140,6 @@ const noSensorProcess = setInterval(() => {
   // updateSpeed(angle);
 }, 1000 / 60);
 const noSensor = true;
-
-// ------- SCENARI ---------------------------
-const speedScenario = new Scenario(
-  [
-    // [30, 10],
-    // [50, 10],
-    // [80, 10],
-    // [90, 10],
-    // [110, 10],
-    // [130, 10],
-    // [80, 10],
-    [80, 10],
-    [50, 10],
-  ],
-  (speed) => {
-    changeLimitSign(speed);
-    audioGraph.changeLimit(speed);
-  },
-  true
-);
-speedScenario.start();
-display('test');
 
 // ------- ORIENTATION -------------------
 
@@ -198,10 +218,10 @@ gyro.addEventListener("reading", () => {
 });
 
 // -------- SPEED -------------------
-const pedalCenter = 47; // deg
-const pedalDeadzone = 4; //deg
-const pedalMaxDiff = 10; // deg
-const pedalMinDiff = 15; // deg
+const pedalCenter = 46; // deg
+const pedalDeadzone = 2; //deg
+const pedalMaxDiff = 6; // deg
+const pedalMinDiff = 20; // deg
 const maxSpeed = 180; // km/h
 const upResponseTime = (5 * 0.66 * maxSpeed) / 100; // 0 - 100 km/h time
 const downResponseTime = (3 * maxSpeed) / 100; // 100 - 0 km/h time
@@ -259,6 +279,6 @@ function updateHeading(tilt) {
   const current = audioContext.currentTime;
   const dt = current - timeHeading;
   timeHeading = current;
-  heading += tilt * dt;
+  heading -= tilt * dt;
   rotateArrow(heading);
 }

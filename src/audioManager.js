@@ -34,9 +34,13 @@ export class AudioGraph {
     this.state = {
       time: audioContext.currentTime,
       context: audioContext,
+      isChangingLimit: false,
+      limitFactor: 0,
+      limitFilter: new LowPassFilter(0.5),
       rate: 0,
       filteredLimSpeed: 0,
       limSpeed: 0,
+      displayedLimit: 0,
       limDiff: 10,
       speed: 0,
       previousSpeed: 0,
@@ -46,63 +50,83 @@ export class AudioGraph {
 
       updateLimit() {
         const current = this.context.currentTime;
-        this.filteredLimSpeed += this.rate * Math.min(current - this.time, 0.1);
+        const dt = Math.min(current - this.time, 0.1);
+        this.filteredLimSpeed += this.rate * dt;
         if (
           this.rate !== 0 &&
           (this.limSpeed - this.filteredLimSpeed) / this.rate < 0
         ) {
-          this.filteredLimSpeed = this.limSpeed;
-          this.rate = 0;
+          this.setLimit(this.limSpeed);
+          this.isChangingLimit = false;
         }
         this.time = current;
+        this.limitFactor = this.limitFilter.process(this.isChangingLimit ? 1 : 0, dt);
+        console.log(this.limitFactor);
       },
 
       setLimit(value) {
+        this.limSpeed = value;
+        this.filteredLimSpeed = value;
+        this.rate = 0;
+        this.isChangingLimit = false;
+      },
+
+      setLimitRamp(value) {
         if (this.limSpeed === 0) {
-          this.limSpeed = value;
-          this.filteredLimSpeed = value;
-          this.rate = 0;
+          this.setLimit(value);
           return;
         }
-        const diff = value - this.filteredLimSpeed;
-        this.rate = diff > 0 ? diff / 2 : diff / 5;
-        this.limSpeed = value;
-      },
+        if (!this.isChangingLimit) {
+          const diff = value - this.filteredLimSpeed;
+          this.rate = diff > 0 ? diff / 2 : diff / 8;
+          this.limSpeed = value;
+          this.isChangingLimit = true;
+          // console.log(`changing limit to ${value} with rate ${this.rate}...`)
+        }
+      }
     };
 
-    this.sources = [];
+    this.sources = {};
   }
 
   async initializeGraph() {
     // Sources must have an init() and update(speed, accel) method
-    this.sources.push(
+    this.sources['nearLimit'] = 
       new NearLimit(this.context, this.masterGain, "windStable.wav", true)
-    );
+    ;
 
-    this.sources.push(
+    this.sources['limit'] = 
       new LimitSpeed(this.context, this.masterGain, "windUnstable.wav", true)
-    );
+    ;
 
-    this.sources.push(
+    this.sources['brake'] = 
       new Brake(this.context, this.masterGain, "brake.wav", true)
-    );
+    ;
 
-    this.sources.push(
+    this.sources['upLimit'] = 
       new SpeedUp(this.context, this.masterGain, "speedUp.wav")
-    );
+    ;
 
-    this.sources.push(
+    this.sources['downLimit'] = 
       new SpeedDown(this.context, this.masterGain, "speedDown.wav")
-    );
+    ;
+
+    this.sources['nextLimit'] =
+      new AudioPlayer(this.context, this.masterGain, "AngieBipBrefHigh.wav")
+    ;
+
+    this.sources['limitChange'] =
+      new AudioPlayer(this.context, this.masterGain, "AngieBipBref_01.wav")
+    ;
 
     const resonator = new Resonator(this.context, this.masterGain);
-    this.sources.push(resonator);
+    this.sources['resonator'] = resonator;
 
-    this.sources.push(
+    this.sources['motor'] = 
       new Motor(this.context, resonator.input, "angenoise.wav", true, 1)
-    );
+    ;
 
-    this.sources.forEach(async (source) => await source.init());
+    Object.values(this.sources).forEach(async (source) => await source.init());
   }
 
   updateSpeed(speed, dt, input) {
@@ -111,13 +135,27 @@ export class AudioGraph {
     this.state.input = input;
     this.state.acceleration = (speed - this.state.previousSpeed) / dt;
     this.state.deviation = speed - this.state.filteredLimSpeed;
-    this.sources.forEach((source) => source.update(this.state));
+    Object.values(this.sources).forEach((source) => source.update(this.state));
     this.state.previousSpeed = speed;
   }
 
   changeLimit(speed) {
     this.state.setLimit(speed);
-    this.sources.forEach((source) => source.update(this.state));
+    this.state.displayedLimit = speed;
+  }
+
+  changeLimitRamp(speed) {
+    if (speed > this.state.limSpeed) {
+      setTimeout(() => this.state.setLimitRamp(speed), 6000);
+    } else {
+      this.state.setLimitRamp(speed);
+    }
+  }
+
+  changeDisplayedLimit(speed) {
+    this.state.displayedLimit = speed;
+    Object.values(this.sources).forEach((source) => source.update(this.state));
+    console.log("limit changed to : ", speed);
   }
 
   updatePan(tilt) {
@@ -138,6 +176,10 @@ export class AudioGraph {
       this.context.currentTime + 1
     );
   }
+
+  play(source) {
+    this.sources[source].play();
+  }
 }
 
 class NearLimit extends AudioPlayer {
@@ -154,9 +196,16 @@ class NearLimit extends AudioPlayer {
     this.time = this.context.currentTime;
 
     const forwardActivity = scaleClip(state.input, 0.03, 0.15, 0, 1);
-    const accelFactor = this.lpfilter.process(forwardActivity, dt);
+    let accelFactor = this.lpfilter.process(forwardActivity, dt);
+    accelFactor = Math.min(accelFactor + state.limitFactor, 1);
 
-    const value = scaleClip(state.deviation, -limDiff, 0, 0, 1);
+    let value = 0
+    if (state.isChangingLimit && state.rate < 0) {
+      console.log(state.deviation);
+      value = scaleClip(state.deviation, -limDiff / 2, limDiff / 2, 0, 1);
+    } else {
+      value = scaleClip(state.deviation, -limDiff, 0, 0, 1);
+    }
 
     this.gain.gain.value = accelFactor * volumeControl(value);
     this.filter.frequency.value = frequencyControl(value);
@@ -165,7 +214,9 @@ class NearLimit extends AudioPlayer {
 
 class LimitSpeed extends AudioPlayer {
   update(state) {
-    this.gain.gain.value = scaleClip(state.deviation, 0, state.limDiff, 0, 1);
+    let value = scaleClip(state.deviation, 0, state.limDiff, 0, 1);
+    value = Math.max(value - state.limitFactor, 0);
+    this.gain.gain.value = value;
   }
 }
 
@@ -186,10 +237,10 @@ class SpeedUp extends AudioPlayer {
   update(state) {
     const speed = state.speed;
     const previousSpeed = state.previousSpeed;
-    if (speed > state.limSpeed && previousSpeed < this.previousLimSpeed) {
+    if (speed > state.displayedLimit && previousSpeed < this.previousLimSpeed) {
       this.play();
     }
-    this.previousLimSpeed = state.limSpeed;
+    this.previousLimSpeed = state.displayedLimit;
   }
 }
 
@@ -202,10 +253,10 @@ class SpeedDown extends AudioPlayer {
   update(state) {
     const speed = state.speed;
     const previousSpeed = state.previousSpeed;
-    if (speed < state.limSpeed && previousSpeed > this.previousLimSpeed) {
+    if (speed < state.displayedLimit && previousSpeed > this.previousLimSpeed) {
       this.play();
     }
-    this.previousLimSpeed = state.limSpeed;
+    this.previousLimSpeed = state.displayedLimit;
   }
 }
 

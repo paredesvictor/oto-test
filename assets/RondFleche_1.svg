@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Calque_2" data-name="Calque 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 485.21 488.79">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke: #fff;
+        stroke-miterlimit: 10;
+        stroke-width: 35px;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+    </style>
+  </defs>
+  <g id="Calque_1-2" data-name="Calque 1">
+    <g>
+      <g id="Flèche">
+        <g>
+          <line class="cls-1" x1="245.63" y1="409.41" x2="245.63" y2="226.87"/>
+          <polygon class="cls-2" points="341.61 254.96 245.64 88.74 149.65 254.96 341.61 254.96"/>
+        </g>
+      </g>
+      <g id="AAA">
+        <path class="cls-2" d="M242.61,484.58C111.15,484.58,3.98,376.82,3.98,244.19S111.17,4.02,242.61,4.02s238.63,107.76,238.63,240.39-107.19,240.17-238.63,240.17M242.61,0C108.74,0,0,109.54,0,244.4s108.74,244.4,242.61,244.4,242.61-109.54,242.61-244.4S376.47,0,242.61,0"/>
+      </g>
+    </g>
+  </g>
+</svg>

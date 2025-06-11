@@ -15,62 +15,57 @@ audioGraph.changeLimit(0);
 
 // ------- SENSORS --------------------------
 const accel = new Accelerometer({ frequency: 60 });
-accel.start();
 const gyro = new Gyroscope({ frequency: 60 });
-gyro.start();
-
 funnyFullScreen.enable();
 
 // ------ VISUAL INTERFACE ----------------------
 render(
   html`
-    <div class="header-row">
-      <h1 id="print"></h1>
-    </div>
 
     <div class="main-row">
-      <div class="central-elements">
-        <h1 id="speed">0</h1>
-        <h1 id="unit">km/h</h1>
+      <div class="left-element">
+        <img id="logo" src="assets/LogoBlancOTO.svg"/>
+        <h1 id="print"></h1>
       </div>
 
-      <div class="central-elements">
-        <img id="logo" src="assets/logo.svg" />
-        <!-- <img id="logo" src="assets/logo.png"/> -->
+      <div class="central-column">
+        <div class="central-elements">
+          <img id="arrow" src="assets/RondFleche_1.svg" />
+          <h1 id="speed">0</h1>
+          <h1 id="unit">km/h</h1>
+        </div> 
       </div>
 
-      <div class="central-elements">
+      <div class="right-elements">
+        <div id="next-sign">
+          <img src="assets/limite_30.svg" style="width: 25%" />
+        </div>
         <img id="limit-sign" src="assets/limite_130.svg" />
-      </div>
-
-      <div class="central-elements">
-        <sc-slider
-          id="angle"
-          orientation="vertical"
-          style="height:300px; width:50px"
-          min="0"
-          max=${Math.PI / 2}
-          value=${0}
-        ></sc-slider>
       </div>
     </div>
 
     <div class="footer-row">
-      <sc-button
-        class="footer-button"
-        @press=${(e) => {
-          speed = 0;
-          timeSpeed = audioContext.currentTime;
-        }}
-        >R</sc-button
-      >
-      <sc-toggle
-        class="footer-button"
-        value="1"
-        @change=${(e) => {
-          audioGraph.mute(!e.detail.value);
-        }}
-      ></sc-toggle>
+      <div class="button-image">
+        <sc-toggle
+          class="footer-button"
+          id="on-off"
+          @change=${(e) => {
+            timeSpeed = audioContext.currentTime;
+            audioGraph.mute(!e.detail.value);
+            if (e.detail.value) {
+              console.log("started");
+              accel.start();
+              gyro.start();
+            } else {
+              console.log("stopped");
+              accel.stop();
+              gyro.stop();
+              speed = 0;
+              updateSpeed(speed);
+            }
+          }}
+        ></sc-toggle>
+      </div>
     </div>
   `,
   document.body
@@ -92,9 +87,15 @@ function changeLimitSign(speed) {
   document.getElementById("limit-sign").src = `assets/limite_${speed}.svg`;
 }
 
+function rotateArrow(angle) {
+  document.getElementById("arrow").style.setProperty("rotate", `${angle}rad`);
+}
+
+document.getElementById('on-off').value = false;
+ 
 const noSensorProcess = setInterval(() => {
-  const angle = document.getElementById("angle").value;
-  updateSpeed(angle);
+  // const angle = document.getElementById("angle").value;
+  // updateSpeed(angle);
 }, 1000 / 60);
 const noSensor = true;
 
@@ -118,6 +119,7 @@ const speedScenario = new Scenario(
   true
 );
 speedScenario.start();
+display('test');
 
 // ------- ORIENTATION -------------------
 
@@ -152,7 +154,9 @@ accel.addEventListener("reading", () => {
   // check if gyro has been updated
   updateCounter++;
   if (updateCounter == 2) {
+    display(pitch * 180 / Math.PI);
     rotateLogo(-tilt);
+    updateHeading(tilt);
     updateSpeed(pitch);
     audioGraph.updatePan(tilt);
     updateCounter = 0;
@@ -184,18 +188,20 @@ gyro.addEventListener("reading", () => {
   // check if accelero has been updated
   updateCounter++;
   if (updateCounter == 2) {
+    display(pitch * 180 / Math.PI);
     rotateLogo(-tilt);
     updateSpeed(pitch);
+    updateHeading(tilt);
     audioGraph.updatePan(tilt);
     updateCounter = 0;
   }
 });
 
 // -------- SPEED -------------------
-const pedalCenter = 30; // deg
-const pedalDeadzone = 5; //deg
-const pedalMaxDiff = 30; // deg
-const pedalMinDiff = 30; // deg
+const pedalCenter = 47; // deg
+const pedalDeadzone = 4; //deg
+const pedalMaxDiff = 10; // deg
+const pedalMinDiff = 15; // deg
 const maxSpeed = 180; // km/h
 const upResponseTime = (5 * 0.66 * maxSpeed) / 100; // 0 - 100 km/h time
 const downResponseTime = (3 * maxSpeed) / 100; // 100 - 0 km/h time
@@ -209,15 +215,30 @@ function updateSpeed(pedalAngle) {
   timeSpeed = currentTime;
 
   const pedalAngleDeg = (pedalAngle * 180) / Math.PI;
-  if (pedalAngleDeg > pedalCenter + pedalDeadzone / 2) {
+  // if (pedalAngleDeg > pedalCenter + pedalDeadzone / 2) {
+  //   // positive acceleration
+  //   input = (pedalAngleDeg - pedalCenter - pedalDeadzone / 2) / pedalMaxDiff;
+  //   input = Math.min(input, 1);
+  //   speed += (input * dt * (maxSpeed - speed)) / upResponseTime;
+  //   speed = Math.min(speed, 180);
+  // } else if (pedalAngleDeg < pedalCenter - pedalDeadzone / 2) {
+  //   // negative acceleration
+  //   input = (pedalAngleDeg - pedalCenter + pedalDeadzone / 2) / pedalMaxDiff;
+  //   input = Math.max(input, -1);
+  //   const newSpeed = Math.max(
+  //     speed + (maxSpeed * input * dt) / downResponseTime,
+  //     0
+  //   );
+  // }
+  if (pedalAngleDeg < pedalCenter - pedalDeadzone / 2) {
     // positive acceleration
-    input = (pedalAngleDeg - pedalCenter - pedalDeadzone / 2) / pedalMaxDiff;
+    input = -(pedalAngleDeg - pedalCenter + pedalDeadzone / 2) / pedalMinDiff;
     input = Math.min(input, 1);
     speed += (input * dt * (maxSpeed - speed)) / upResponseTime;
     speed = Math.min(speed, 180);
-  } else if (pedalAngleDeg < pedalCenter - pedalDeadzone / 2) {
+  } else if (pedalAngleDeg > pedalCenter + pedalDeadzone / 2) {
     // negative acceleration
-    input = (pedalAngleDeg - pedalCenter + pedalDeadzone / 2) / pedalMinDiff;
+    input = -(pedalAngleDeg - pedalCenter - pedalDeadzone / 2) / pedalMaxDiff;
     input = Math.max(input, -1);
     const newSpeed = Math.max(
       speed + (maxSpeed * input * dt) / downResponseTime,
@@ -227,4 +248,17 @@ function updateSpeed(pedalAngle) {
   }
   setSpeed(speed);
   audioGraph.updateSpeed(speed, dt, input);
+}
+
+// -------- ROTATION -------------------
+let heading = 0;
+let timeHeading = audioContext.currentTime;
+
+
+function updateHeading(tilt) {
+  const current = audioContext.currentTime;
+  const dt = current - timeHeading;
+  timeHeading = current;
+  heading += tilt * dt;
+  rotateArrow(heading);
 }

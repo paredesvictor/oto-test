@@ -26,6 +26,52 @@ export class LowPassFilter {
   }
 }
 
+export class RampToValue {
+  constructor(upTime, downTime, timeFunc) {
+    this.upTime = upTime;
+    this.downTime = downTime;
+    this.rate = 0;
+    this.target = 0;
+    this.currentValue = 0;
+    this.getTime = timeFunc;
+    this.time = timeFunc();
+  }
+
+  start(target) {
+    this.target = target;
+    this.time = this.getTime();
+    const diff = this.target - this.currentValue;
+    if (diff === 0) {
+      this.rate = 0;
+    } else {
+    this.rate = diff > 0 ? diff / this.upTime : diff / this.downTime;
+    }
+  }
+
+  update() {
+    if (this.rate === 0) {
+      return this.target;
+    } else {
+      const current = this.getTime();
+      const dt = current - this.time;
+      this.time = current;
+      this.currentValue += this.rate * dt;
+      const completed = (this.target - this.currentValue) / this.rate < 0;
+      if (completed) {
+        this.currentValue = this.target;
+        this.rate = 0;
+      }
+      return this.currentValue;
+    }
+  }
+
+  set(value) {
+    this.target = value;
+    this.currentValue = value;
+    this.rate = 0;
+  }
+}
+
 export function scale(value, in_low, in_high, out_low, out_high) {
   if (in_high === in_low) {
     return out_low;

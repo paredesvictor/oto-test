@@ -82,6 +82,10 @@ render(
             <sc-button @press=${setCenter}></sc-button>
             <sc-button @press=${setAccelBound}></sc-button>
           </div>
+          <sc-toggle
+            id="hide-button"
+            @change=${hideSpeed}
+          ></sc-toggle>
         </div>
 
         <div id="central-elements">
@@ -124,6 +128,12 @@ render(
   `,
   document.body
 );
+
+function hideSpeed(event) {
+  const opacity = event.detail.value ? 0 : 1;
+  document.getElementById('speed').style.setProperty('opacity',opacity);
+  document.getElementById('unit').style.setProperty('opacity',opacity);
+}
 
 function buttonOn(active) {
   if (active) {

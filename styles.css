@@ -90,6 +90,19 @@ body {
   --sc-button-background-color-selected: rgba(0, 0, 0, 0);
 }
 
+#hide-button {
+  height: 100%;
+  width: 100px;
+  border: none;
+  background-color: rgba(0, 0, 0, 0);
+  --sc-toggle-active-color: rgba(0, 0, 0, 0);
+  --sc-toggle-inactive-color: rgba(0, 0, 0, 0);
+  border: none;
+  background-size: 100px;
+  background-position: 50% 50%;
+  background-repeat: no-repeat;
+}
+
 /* ------ CENTER ------ */
 #central-elements {
   display: flex;
@@ -130,10 +143,12 @@ body {
 #speed {
   font-size: 130pt;
   font-weight: lighter;
+  transition: opacity 1s;
 }
 
 #unit {
   font-size: 3em;
+  transition: opacity 1s;
 }
 
 /* ------ RIGHT ------ */

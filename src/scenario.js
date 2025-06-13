@@ -41,7 +41,7 @@ export class SpeedScenario {
     if (this.currentIndex <= this.events.length - 2)  {
       const nextSpeed = this.events[this.currentIndex + 1]
       const increasing = this.currentSpeed < nextSpeed;
-      const offset = increasing ? 2000 : 10000;
+      const offset = increasing ? 4000 : 10000;
       this.soonTimerId = setTimeout(
         () => this.callBackSoon(nextSpeed),
         this.currentDuration - offset
@@ -50,7 +50,7 @@ export class SpeedScenario {
       if (this.loop) {
         const nextSpeed = this.events[0]
         const increasing = this.currentSpeed < nextSpeed;
-        const offset = increasing ? 2000 : 10000;
+        const offset = increasing ? 4000 : 10000;
         this.soonTimerId = setTimeout(
           () => this.callBackSoon(nextSpeed),
           this.currentDuration - offset

@@ -40,9 +40,9 @@ export class AudioGraph {
       limitFactor: 0,
       limitFilter: new RampToValue(2, 2, () => this.context.currentTime),
       limSpeedFilter: new RampToValue(2, 8, () => this.context.currentTime),
+      quickLimSpeedFilter: new RampToValue(2, 2, () => this.context.currentTime),
       filteredLimSpeed: 0,
       limSpeed: 0,
-      displayedLimit: 0,
       limDiff: 10,
       speed: 0,
       previousSpeed: 0,
@@ -53,12 +53,13 @@ export class AudioGraph {
       updateLimit() {
         this.filteredLimSpeed = this.limSpeedFilter.update();
         this.limitFactor = this.limitFilter.update();
+        this.limSpeed = this.quickLimSpeedFilter.update();
       },
 
       setLimit(value) {
-        this.limSpeed = value;
         this.filteredLimSpeed = value;
         this.limSpeedFilter.set(value);
+        this.limSpeed = this.quickLimSpeedFilter.start(value);
         this.limitFilter.start(0);
         this.isChangingLimit = false;
       },
@@ -66,11 +67,11 @@ export class AudioGraph {
       setLimitRamp(value) {
         if (this.limSpeed === 0) {
           this.setLimit(value);
+          this.quickLimSpeedFilter.set(value);
           return;
         }
         if (!this.isChangingLimit) {
           this.limSpeedFilter.start(value);
-          this.limSpeed = value;
           this.isChangingLimit = true;
           this.limitFilter.start(1);
         }
@@ -85,28 +86,18 @@ export class AudioGraph {
     this.state.speed = speed;
     this.state.input = input;
     this.state.acceleration = (speed - this.state.previousSpeed) / dt;
-    this.state.deviation = speed - this.state.filteredLimSpeed;
+    this.state.deviation = speed - this.state.limSpeed;
     Object.values(this.sources).forEach((source) => source.update(this.state));
     this.state.previousSpeed = speed;
   }
 
   changeLimit(speed) {
+    console.log();
     this.state.setLimit(speed);
-    this.changeDisplayedLimit(speed);
   }
 
   changeLimitRamp(speed) {
-    if (speed > this.state.limSpeed) {
-      setTimeout(() => this.state.setLimitRamp(speed), 6000);
-    } else {
-      this.state.setLimitRamp(speed);
-    }
-  }
-
-  changeDisplayedLimit(speed) {
-    this.state.displayedLimit = speed;
-    Object.values(this.sources).forEach((source) => source.update(this.state));
-    console.log("limit changed to : ", speed);
+    this.state.setLimitRamp(speed);
   }
 
   updatePan(tilt) {
@@ -216,7 +207,7 @@ export class AudioGraph {
 class NearLimit extends AudioPlayer {
   constructor() {
     super(...arguments);
-    this.lpfilter = new LowPassFilter(0.5, 0.05);
+    this.lpfilter = new LowPassFilter(0.2, 0.05);
     this.time = this.context.currentTime || 0;
   }
 
@@ -228,11 +219,9 @@ class NearLimit extends AudioPlayer {
 
     const forwardActivity = scaleClip(state.input, 0.03, 0.15, 0, 1);
     const accelFactor = this.lpfilter.process(forwardActivity, dt);
-
-    const value = scaleClip(state.deviation, -limDiff, 0, 0, 1);
-
-    this.gain.gain.value =
-      (1 - state.limitFactor) * accelFactor * volumeControl(value);
+    const value =
+      scaleClip(state.deviation, -limDiff, 0, 0, 1); // * (1 - state.limitFactor);
+    this.gain.gain.value = accelFactor * volumeControl(value);
     this.filter.frequency.value = frequencyControl(value);
   }
 }
@@ -240,9 +229,9 @@ class NearLimit extends AudioPlayer {
 class NewLimit extends AudioPlayer {
   update(state) {
     const limDiff = state.limDiff;
+    const movingDeviation = state.speed - state.filteredLimSpeed;
     const value =
-      scaleClip(state.deviation, 0, limDiff, 0, 1) * state.limitFactor;
-    // console.log(state.deviation / limDiff, state.limitFactor);
+      scaleClip(movingDeviation, 0, limDiff, 0, 1) * state.limitFactor;
     this.gain.gain.value = volumeControl(value);
     this.filter.frequency.value = frequencyControl(value);
   }
@@ -251,7 +240,7 @@ class NewLimit extends AudioPlayer {
 class LimitSpeed extends AudioPlayer {
   update(state) {
     const value = scaleClip(state.deviation, 0, state.limDiff, 0, 1);
-    this.gain.gain.value = value * (1 - state.limitFactor);
+    this.gain.gain.value = value; // * (1 - state.limitFactor);
   }
 }
 
@@ -264,34 +253,22 @@ class Brake extends AudioPlayer {
 }
 
 class SpeedUp extends AudioPlayer {
-  constructor() {
-    super(...arguments);
-    this.previousLimSpeed = 0;
-  }
-
   update(state) {
     const speed = state.speed;
     const previousSpeed = state.previousSpeed;
-    if (speed > state.displayedLimit && previousSpeed < this.previousLimSpeed) {
+    if (speed > state.limSpeed && previousSpeed < state.limSpeed) {
       this.play();
     }
-    this.previousLimSpeed = state.displayedLimit;
   }
 }
 
 class SpeedDown extends AudioPlayer {
-  constructor() {
-    super(...arguments);
-    this.previousLimSpeed = 0;
-  }
-
   update(state) {
     const speed = state.speed;
     const previousSpeed = state.previousSpeed;
-    if (speed < state.displayedLimit && previousSpeed > this.previousLimSpeed) {
+    if (speed < state.limSpeed && previousSpeed > state.limSpeed) {
       this.play();
     }
-    this.previousLimSpeed = state.displayedLimit;
   }
 }
 

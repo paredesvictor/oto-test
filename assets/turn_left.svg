@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" version="1.1" viewBox="0 0 577.14 577.14">
+  <!-- Generator: Adobe Illustrator 29.5.1, SVG Export Plug-In . SVG Version: 2.1.0 Build 141)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #039;
+      }
+
+      .st1 {
+        stroke: #000;
+        stroke-width: 3px;
+      }
+
+      .st1, .st2 {
+        fill: #fff;
+      }
+
+      .st1, .st3 {
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .st3 {
+        fill: none;
+        stroke: blue;
+        stroke-width: .18px;
+      }
+    </style>
+  </defs>
+  <sodipodi:namedview id="namedview11" bordercolor="#666666" borderopacity="1" fit-margin-bottom="0.1" fit-margin-left="0.1" fit-margin-right="0.1" fit-margin-top="0.1" gridtolerance="10" guidetolerance="10" inkscape:current-layer="Layer_1" inkscape:cx="-92.182513" inkscape:cy="288.57408" inkscape:pageopacity="0" inkscape:pageshadow="2" inkscape:window-height="1004" inkscape:window-maximized="1" inkscape:window-width="1280" inkscape:window-x="-8" inkscape:window-y="-8" inkscape:zoom="0.40972222" objecttolerance="10" pagecolor="#ffffff" showgrid="false"/>
+  <circle id="circle3" class="st1" cx="288.56" cy="288.56" r="286.97" sodipodi:cx="287.05701" sodipodi:cy="287.05701" sodipodi:rx="286.96899" sodipodi:ry="286.96899"/>
+  <circle id="circle5" class="st0" cx="288.56" cy="288.56" r="261.67" sodipodi:cx="287.05701" sodipodi:cy="287.05701" sodipodi:rx="261.66599" sodipodi:ry="261.66599"/>
+  <path id="path7" class="st2" d="M295.18,230.26c29.21-.81,53.84,21.59,55.81,50.74v173.42s41.54,0,41.54,0v-173.42c-2.98-49.93-44.32-88.92-94.34-88.97-24.44-.38-48.89-.38-73.33,0l55.15-71.87h-52.59s-94,91.03-94,91.03l91.51,94.62h55.29s-59.35-75.55-59.35-75.55h77.31" inkscape:connector-curvature="0"/>
+  <path id="path9" class="st3" d="M298.12,192.03h.07" inkscape:connector-curvature="0"/>
+</svg>

@@ -12,26 +12,28 @@ await resumeAudioContext(audioContext);
 const audioGraph = new AudioGraph(audioContext);
 audioGraph.initializeGraph();
 audioGraph.changeLimit(0);
+audioGraph.mute();
+
+// ------- FULLSCREEN ---------------------
+funnyFullScreen.enable();
+document.documentElement.requestFullscreen();
 
 // ------- SENSORS --------------------------
 const accel = new Accelerometer({ frequency: 60 });
 const gyro = new Gyroscope({ frequency: 60 });
-funnyFullScreen.enable();
-document.documentElement.requestFullscreen();
+accel.start();
+gyro.start();
 
 // ------- SCENARI ---------------------------
 const speedScenario = new SpeedScenario(
   [
-    // [30, 20],
-    // [50, 40],
-    // [80, 40],
-    // [110, 40],
-    // [80, 40],
-    // [130, 40],
-    // [80, 15],
-    // [50, 15],
-    [50, 15],
-    [30, 10],
+    [30, 40],
+    [50, 20],
+    [80, 30],
+    [130, 50],
+    [80, 15],
+    [50, 25],
+    [0, 10],
   ],
   (speed) => {
     changeLimitSign(speed);
@@ -44,22 +46,29 @@ const speedScenario = new SpeedScenario(
     audioGraph.play("nextLimit");
     setTimeout(() => audioGraph.changeLimitRamp(speed), 2000);
   },
-  true
 );
 
 const turnScenario = new TurnScenario(
   [
-    [0, 30],
-    [-10, 10],
-    [10, 30],
-    [15, 30],
+    ["front", 15],
+    ["left", 5],
+    ["front", 5],
+    ["right", 5],
+    ["front", 45],
+    ["left", 5],
+    ["front", 20],
+    ["left", 5],
+    ["front", 5],
+    ["right", 5],
+    ["front", 10],
+    ["right", 5],
+    ["front", 35],
+    ["right", 5],
+    ["front", 10],
   ],
-  (angle) => (heading = (Math.PI * angle) / 180),
-  (angle) => {}
+  (direction) => changeTurnSign(direction),
+  (_) => {},
 );
-
-accel.start();
-gyro.start();
 
 // ------ VISUAL INTERFACE ----------------------
 render(
@@ -68,22 +77,40 @@ render(
       <div id="main-row">
         <div id="left-elements">
           <img id="logo" src="assets/LogoBlancOTO.svg" />
-          <h1 id='print'></h1>
+          <div id="button-row">
+            <sc-button @press=${setBrakeBound}></sc-button>
+            <sc-button @press=${setCenter}></sc-button>
+            <sc-button @press=${setAccelBound}></sc-button>
+          </div>
         </div>
 
-        <div id="central-column">
-          <div id="central-elements">
-            <img id="arrow" src="assets/RondFleche_1.svg" />
-            <h1 id="speed">0</h1>
-            <h1 id="unit">km/h</h1>
+        <div id="central-elements">
+          <div id="arrow-container">
+            <img class="arrow" id="left" src="assets/turn_left.svg" />
+            <img class="arrow" id="front" src="assets/turn_front.svg" />
+            <img class="arrow" id="right" src="assets/turn_right.svg" />
           </div>
+          <h1 id="speed">0</h1>
+          <h1 id="unit">km/h</h1>
         </div>
 
         <div id="right-elements">
           <div id="next-sign-container">
-            <img id="next-sign" src="assets/limite_30.svg" />
+            <img class="next-sign" id="n0" src="assets/limite_0.svg" />
+            <img class="next-sign" id="n30" src="assets/limite_30.svg" />
+            <img class="next-sign" id="n50" src="assets/limite_50.svg" />
+            <img class="next-sign" id="n80" src="assets/limite_80.svg" />
+            <img class="next-sign" id="n110" src="assets/limite_110.svg" />
+            <img class="next-sign" id="n130" src="assets/limite_130.svg" />
           </div>
-          <img id="limit-sign" src="assets/limite_130.svg" />
+          <div id="limit-sign-container">
+            <img class="limit-sign" id="l0" src="assets/limite_0.svg" />
+            <img class="limit-sign" id="l30" src="assets/limite_30.svg" />
+            <img class="limit-sign" id="l50" src="assets/limite_50.svg" />
+            <img class="limit-sign" id="l80" src="assets/limite_80.svg" />
+            <img class="limit-sign" id="l110" src="assets/limite_110.svg" />
+            <img class="limit-sign" id="l130" src="assets/limite_130.svg" />
+          </div>
         </div>
       </div>
 
@@ -104,11 +131,14 @@ function buttonOn(active) {
     document
       .getElementById("startup-button")
       .style.setProperty("filter", "var(--white-filter)");
+    document.getElementById('arrow-container').style.setProperty('opacity', 0.8);
   } else {
     document.getElementById("right-elements").style.setProperty("opacity", 0);
     document
       .getElementById("startup-button")
       .style.setProperty("filter", "var(--red-filter)");
+    changeTurnSign('front')
+    document.getElementById('arrow-container').style.setProperty('opacity', 0.1);
   }
 }
 
@@ -116,10 +146,19 @@ function display(message) {
   document.getElementById("print").innerText = message;
 }
 
-function rotateLogo(angle) {
+function rotateMain(angle) {
+  const roundedAngle = Math.round(angle * 1000) / 1000;
   document
     .getElementById("main-column")
-    .style.setProperty("rotate", `${angle / 15}rad`);
+    .style.setProperty("rotate", `${roundedAngle / 10}rad`);
+}
+
+function changeTurnSign(direction) {
+  const signElements = document.getElementsByClassName("arrow");
+  for (let i = 0; i < signElements.length; i++) {
+    signElements[i].style.setProperty("opacity", 0);
+  }
+  document.getElementById(direction).style.setProperty("opacity", 1);
 }
 
 function setSpeed(value) {
@@ -127,11 +166,21 @@ function setSpeed(value) {
 }
 
 function changeLimitSign(speed) {
-  document.getElementById("limit-sign").src = `assets/limite_${speed}.svg`;
+  const signElements = document.getElementsByClassName("limit-sign");
+  for (let i = 0; i < signElements.length; i++) {
+    signElements[i].style.setProperty("opacity", 0);
+  }
+  document.getElementById(`l${speed}`).style.setProperty("opacity", 1);
 }
 
 function changeNextSign(speed) {
-  document.getElementById("next-sign").src = `assets/limite_${speed}.svg`;
+  const signElements = document.getElementsByClassName("next-sign");
+  for (let i = 0; i < signElements.length; i++) {
+    signElements[i].style.setProperty("visibility", "hidden");
+  }
+  document
+    .getElementById(`n${speed}`)
+    .style.setProperty("visibility", "visible");
   document
     .getElementById("next-sign-container")
     .style.setProperty("opacity", 1);
@@ -158,7 +207,7 @@ let pitchAlpha = 0.95;
 let tiltAccel = 0;
 let tiltGyro = 0;
 let tilt = 0;
-let tiltAlpha = 0.95;
+let tiltAlpha = 0.8;
 let updateCounter = 0;
 const toggle = document.getElementById("startup-button");
 
@@ -167,7 +216,6 @@ const noSensorProcess = setInterval(() => {
   // updateSpeed(angle);
 }, 1000 / 60);
 const noSensor = true;
-
 
 // Accelerometer update
 accel.addEventListener("reading", () => {
@@ -187,9 +235,9 @@ accel.addEventListener("reading", () => {
   tiltAccel = Math.atan2(ay, Math.sqrt(az ** 2 + ax ** 2));
   tilt = tiltAlpha * tiltGyro + (1 - tiltAlpha) * tiltAccel;
 
-  if (toggle.value) {
-    rotateLogo(-tilt);
-    updateHeading(tilt);
+  updateCounter += 1;
+  if (toggle.value && updateCounter >= 2) {
+    rotateMain(-tilt);
     updateSpeed(pitch);
     audioGraph.updatePan(tilt);
     updateCounter = 0;
@@ -218,24 +266,24 @@ gyro.addEventListener("reading", () => {
   tiltGyro = tilt - gz;
   tilt = tiltAlpha * tiltGyro + (1 - tiltAlpha) * tiltAccel;
 
-  if (toggle.value) {
-    rotateLogo(-tilt);
+  updateCounter += 1;
+  if (toggle.value && updateCounter >= 2) {
+    rotateMain(-tilt);
     updateSpeed(pitch);
-    updateHeading(tilt);
     audioGraph.updatePan(tilt);
     updateCounter = 0;
   }
 });
 
 // -------- SPEED -------------------
-const pedalCenter = 56; // deg
+let pedalCenter = 32; // deg
 const pedalDeadzone = 4; //deg
-const pedalMaxDiff = 6; // deg
-const pedalMinDiff = 20; // deg
+let pedalMaxDiff = 4; // deg
+let pedalMinDiff = 15; // deg
 const maxSpeed = 180; // km/h
 const upResponseTime = (5 * 0.66 * maxSpeed) / 100; // 0 - 100 km/h time
 const downResponseTime = (3 * maxSpeed) / 100; // 100 - 0 km/h time
-let speed = 0;
+let speed = -1;
 let timeSpeed = audioContext.currentTime;
 let input = 0;
 
@@ -274,27 +322,34 @@ function updateSpeed(pedalAngle) {
     input = Math.max(input, -1);
     const newSpeed = Math.max(
       speed + (maxSpeed * input * dt) / downResponseTime,
-      0
+      -1
     );
     speed = newSpeed;
   } else {
     input = 0;
   }
-  
+
   setSpeed(speed);
-  audioGraph.updateSpeed(speed, dt, input);
+  audioGraph.updateSpeed(Math.max(0, speed), dt, input);
 }
 
-// -------- ROTATION -------------------
-let timeHeading = audioContext.currentTime;
-let heading = 0;
+function setCenter(event) {
+  const angle = 180 * pitch / Math.PI;
+  pedalCenter = angle;
+}
 
-function updateHeading(tilt) {
-  const current = audioContext.currentTime;
-  const dt = current - timeHeading;
-  timeHeading = current;
-  heading -= tilt * dt;
-  rotateArrow(heading);
+function setBrakeBound(event) {
+  const angle = 180 * pitch / Math.PI;
+  if (angle > pedalCenter + pedalDeadzone / 2) {
+    pedalMaxDiff = angle - pedalCenter - pedalDeadzone / 2;
+  }
+}
+
+function setAccelBound(event) {
+  const angle = 180 * pitch / Math.PI;
+  if (angle < pedalCenter - pedalDeadzone / 2) {
+    pedalMinDiff = pedalCenter - pedalDeadzone / 2 - angle;
+  }
 }
 
 // --------- STARTUP BUTTON -------------
@@ -309,11 +364,11 @@ function toggleButtonCallBack(event) {
     buttonOn(true);
   } else {
     console.log("stopped");
-    speed = 0;
-    updateSpeed(speed);
+    buttonOn(false);
+    speed = -1;
+    setSpeed(speed);
     speedScenario.stop();
     turnScenario.stop();
     audioGraph.play("turnOff");
-    buttonOn(false);
   }
 }

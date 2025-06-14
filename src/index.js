@@ -287,7 +287,7 @@ gyro.addEventListener("reading", () => {
 
 // -------- SPEED -------------------
 let pedalCenter = 32; // deg
-const pedalDeadzone = 1.5; //deg
+const pedalDeadzone = 3; //deg
 let pedalMaxDiff = 4; // deg
 let pedalMinDiff = 15; // deg
 const maxSpeed = 180; // km/h

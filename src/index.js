@@ -287,11 +287,11 @@ gyro.addEventListener("reading", () => {
 
 // -------- SPEED -------------------
 let pedalCenter = 32; // deg
-const pedalDeadzone = 4; //deg
+const pedalDeadzone = 1.5; //deg
 let pedalMaxDiff = 4; // deg
 let pedalMinDiff = 15; // deg
 const maxSpeed = 180; // km/h
-const upResponseTime = (5 * 0.66 * maxSpeed) / 100; // 0 - 100 km/h time
+const upResponseTime = (8 * 0.66 * maxSpeed) / 100; // 0 - 100 km/h time
 const downResponseTime = (3 * maxSpeed) / 100; // 100 - 0 km/h time
 let speed = -1;
 let timeSpeed = audioContext.currentTime;
